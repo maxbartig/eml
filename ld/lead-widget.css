@@ -88,17 +88,19 @@ body.auth-locked .lead-dashboard {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(3, 7, 18, 0.9);
+  background: rgba(2, 6, 18, 0.92);
   z-index: 1300;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  backdrop-filter: blur(18px) saturate(120%);
 }
 
 .generate-overlay__panel {
-  background: rgba(12, 17, 30, 0.95);
+  background: var(--panel);
   border-radius: 1rem;
   padding: 2rem;
-  width: min(480px, 90vw);
+  width: min(420px, 90vw);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 25px 60px rgba(2, 7, 18, 0.7);
 }
 
 .generate-overlay__header {
@@ -190,8 +192,10 @@ body.auth-locked .lead-dashboard {
   min-height: 1.25rem;
 }
 
-.is-hidden {
-  display: none !important;
+.generate-overlay.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 .auth-overlay__submit {
   margin-top: 0.5rem;
