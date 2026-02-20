@@ -213,10 +213,9 @@ Owner of Evergreen Media Labs</textarea>
 
         addRowButton?.addEventListener("click", () => inputs.appendChild(createRow()));
 
-        form?.addEventListener("submit", (event) => {
-          event.preventDefault();
+        const buildPayload = () => {
           const rows = Array.from(inputs.querySelectorAll(".generate-row"));
-          const payload = rows
+          return rows
             .map((row) => {
               const nicheInput = row.querySelector("input[name='niche']");
               const countInput = row.querySelector("input[name='count']");
@@ -225,14 +224,56 @@ Owner of Evergreen Media Labs</textarea>
               return { niche, count };
             })
             .filter((entry) => entry.niche && entry.count > 0);
+        };
 
+        const generateFormSubmit = form?.querySelector(".generate-overlay__submit");
+
+        const setStatus = (message, isError = false) => {
+          result.textContent = message;
+          result.style.color = isError ? "#f87171" : "#d4ffdf";
+        };
+
+        const setLoading = (isLoading) => {
+          if (isLoading) {
+            addRowButton.setAttribute("disabled", "disabled");
+            generateFormSubmit?.setAttribute("disabled", "disabled");
+            result.textContent = "Generating now…";
+            result.style.color = "#d4d8e5";
+          } else {
+            addRowButton.removeAttribute("disabled");
+            generateFormSubmit?.removeAttribute("disabled");
+          }
+        };
+
+        const generateFormSubmit = form?.querySelector(".generate-overlay__submit");
+
+        form?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const payload = buildPayload();
           if (!payload.length) {
-            result.textContent = "Give me at least one niche with a quantity.";
+            setStatus("Give me at least one niche with a quantity.", true);
             return;
           }
-
-          const total = payload.reduce((sum, entry) => sum + entry.count, 0);
-          result.textContent = `Queued ${total} leads across ${payload.length} niche(s).`;
+          setLoading(true);
+          try {
+            const response = await fetch("/generate", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+              throw new Error(data.error || "Generation failed");
+            }
+            setStatus(data.message || "Queued search. Refresh the page after completion.");
+          } catch (error) {
+            console.error(error);
+            setStatus(error.message || "Something went wrong.", true);
+          } finally {
+            setLoading(false);
+          }
         });
       })();
     </script>

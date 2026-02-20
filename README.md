@@ -387,6 +387,18 @@ Use a snippet such as:
 <script defer src="/path/to/lead-widget.js"></script>
 ```
 
+## Serving the dashboard & generator
+
+- Run the Flask service that exposes `/generate` so the modal can trigger SerpApi + OpenAI generation:
+
+```sh
+export OPENAI_API_KEY=your_key_here
+export SERPAPI_API_KEY=your_key_here
+python generate_server.py --host 0.0.0.0 --port 5000
+```
+
+The modal already posts its niche/count array to `/generate`, so keep this service running on the same host as the dashboard (or proxy `/generate` through your server). Once a response returns, refresh `ld/index.html` so the new leads appear in the dropdown.
+
 ## Optional CSV export
 
 If you still want a classic spreadsheet for backup, pass the `--csv-output` flag when running the generator. The CSV includes all of the same fields (`name`, `address`, `phone`, `email`, `about`, `email_subject`, `email_body`, etc.) so you can review it in Excel or Google Sheets before approving leads.

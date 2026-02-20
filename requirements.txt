@@ -1,1 +1,3 @@
+flask
+openai
 serpapi>=2.0.0
