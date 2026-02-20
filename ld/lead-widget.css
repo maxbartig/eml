@@ -114,7 +114,7 @@ body.auth-locked .lead-dashboard {
 .generate-overlay__close {
   border: none;
   background: transparent;
-  color: var(--muted);
+  color: #f97316;
   font-size: 1.5rem;
   cursor: pointer;
 }
