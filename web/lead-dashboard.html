@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wausau Lead Dashboard</title>
+    <link rel="stylesheet" href="lead-widget.css" />
+  </head>
+  <body>
+    <div class="auth-overlay" id="authOverlay" aria-modal="true" role="dialog">
+      <div class="auth-overlay__panel">
+        <h2>Protected dashboard</h2>
+        <p>Only Evergreen Media Labs team members can access these leads.</p>
+        <form id="authForm" class="auth-overlay__form">
+          <label>
+            Username
+            <input type="text" name="user" autocomplete="username" required />
+          </label>
+          <label>
+            Password
+            <input type="password" name="pass" autocomplete="current-password" required />
+          </label>
+          <p class="auth-overlay__error" id="authError" aria-live="polite"></p>
+          <button type="submit" class="auth-overlay__submit">Unlock dashboard</button>
+        </form>
+      </div>
+    </div>
+    <main class="lead-dashboard">
+        <header class="lead-dashboard__top">
+          <div>
+            <h1 class="lead-dashboard__title">Evergreen Media Labs</h1>
+          </div>
+          <div class="lead-dashboard__actions">
+            <button class="lead-dashboard__action">Polish</button>
+            <button class="lead-dashboard__action">Send</button>
+            <button class="lead-dashboard__action lead-dashboard__action--primary">Generate</button>
+          </div>
+        </header>
+        <section class="lead-dashboard__filters">
+          <div>
+            <label for="search-input">Search</label>
+            <div class="lead-dashboard__search">
+              <input id="search-input" type="text" placeholder="Search by name or address" />
+              <span>⌕</span>
+            </div>
+          </div>
+          <div class="lead-dashboard__tabs">
+            <button class="lead-dashboard__tab is-active">All</button>
+            <button class="lead-dashboard__tab">Awaiting email</button>
+            <button class="lead-dashboard__tab">Approved</button>
+          </div>
+        </section>
+        <section class="lead-dashboard__mock">
+          <div class="mock-lead-header">
+            <span>Lead</span>
+            <span>City</span>
+            <span>Category</span>
+            <span>Email</span>
+            <span class="mock-lead-header__actions">Status</span>
+          </div>
+          <details class="mock-lead-bar" data-mock-bar>
+            <summary class="mock-lead-bar__summary">
+              <span class="mock-lead-bar__text">Revi Design</span>
+              <span class="mock-lead-bar__text">Wausau</span>
+              <span class="mock-lead-bar__text">Lawn care</span>
+              <span class="mock-lead-bar__text">dave@revi-design.com</span>
+              <div class="mock-lead-bar__actions">
+                <select class="mock-lead-bar__select">
+                  <option value="drafted">Drafted</option>
+                  <option value="approved">Approved</option>
+                </select>
+                <button class="mock-lead-bar__delete">Delete</button>
+              </div>
+            </summary>
+            <div class="mock-lead-bar__details">
+              <label>
+                <span>About</span>
+                <textarea>Major Solutions LLC is a Landscaping business serving Wausau.</textarea>
+              </label>
+              <label>
+                <span>Email</span>
+                <textarea>Student Partnership
+
+Hello,
+
+I am a student at D.C. Everest Senior High in 12th grade that is planning on going to school for business and computer science. I currently run a small business named Evergreen Media Labs, a website creation agency, and I came across your business, Major Solutions LLC, on Google and noticed your dedication to transforming landscapes in Wausau and your strong reputation in the community, but it does not appear that you have a website. If I am mistaken and you do, maybe you are interested in a new or updated website to better showcase your landscaping services and continue attracting more customers. I have attached some of my work to this email.
+
+Thank you,
+Owner of Evergreen Media Labs</textarea>
+              </label>
+            </div>
+          </details>
+        </section>
+        <div data-lead-dashboard data-source="./data/leads.json"></div>
+      </main>
+    </div>
+    <script src="lead-widget.js"></script>
+    <script>
+      (function () {
+        const AUTH_USER = "admin";
+        const AUTH_PASS = "LG2608";
+        const STORAGE_KEY = "lead-dashboard-auth";
+        const overlay = document.getElementById("authOverlay");
+        const form = document.getElementById("authForm");
+        const errorEl = document.getElementById("authError");
+
+        const showOverlay = () => {
+          overlay?.classList.remove("is-hidden");
+          document.body.classList.add("auth-locked");
+        };
+
+        const hideOverlay = () => {
+          overlay?.classList.add("is-hidden");
+          document.body.classList.remove("auth-locked");
+        };
+
+        const checkStored = () => {
+          if (sessionStorage.getItem(STORAGE_KEY) === "true") {
+            hideOverlay();
+          } else {
+            showOverlay();
+          }
+        };
+
+        checkStored();
+
+        form?.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const data = new FormData(form);
+          const user = data.get("user")?.toString().trim();
+          const pass = data.get("pass")?.toString();
+          if (user === AUTH_USER && pass === AUTH_PASS) {
+            sessionStorage.setItem(STORAGE_KEY, "true");
+            hideOverlay();
+            errorEl.textContent = "";
+          } else {
+            errorEl.textContent = "Incorrect username or password.";
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
