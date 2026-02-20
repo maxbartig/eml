@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from serpapi import GoogleSearch
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_JSON_OUTPUT = os.path.join(SCRIPT_DIR, "web", "data", "leads.json")
+DEFAULT_JSON_OUTPUT = os.path.join(SCRIPT_DIR, "ld", "data", "leads.json")
 DEFAULT_SENDER_NAME = "Evergreen Media Labs"
 EXCLUDED_DOMAINS = {
     "facebook.com",

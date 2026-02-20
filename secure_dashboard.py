@@ -44,7 +44,7 @@ class AuthHandler(SimpleHTTPRequestHandler):
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Serve the Evergreen Media Labs dashboard with HTTP auth.")
-    parser.add_argument("--dir", default="web", help="Directory to serve (defaults to web)")
+    parser.add_argument("--dir", default="ld", help="Directory to serve (defaults to ld)")
     parser.add_argument("--host", default="", help="Host/interface to bind (default all)")
     parser.add_argument("--port", type=int, default=8000, help="Port to listen on")
     return parser.parse_args()

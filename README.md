@@ -335,7 +335,7 @@ Any future Codex changes must:
 This repo bundles two pieces of the workflow you described:
 
 1. `lead_generator.py` uses SerpApi's Google Maps and Search engines to find Wausau businesses that still have no website listed, verify the absence, look up an email, capture a short "about" blurb, and export the leads as JSON data.
-2. The `web/` folder contains a spreadsheet-style dashboard that reads the JSON feed and renders each lead in an expandable row with the short description, the verified email address, and the email copy you want to send.
+2. The `ld/` folder contains a spreadsheet-style dashboard that reads the JSON feed and renders each lead in an expandable row with the short description, the verified email address, and the email copy you want to send.
 
 ## Setup
 
@@ -351,12 +351,12 @@ You can also pass `--api-key` to `lead_generator.py` instead of exporting the va
 ## Running the generator
 
 ```sh
-python lead_generator.py --json-output web/data/leads.json
+python lead_generator.py --json-output ld/data/leads.json
 ```
 
 ### Key options
 
-- `--json-output`: path to the JSON feed consumed by the website widget (defaults to `web/data/leads.json`).
+- `--json-output`: path to the JSON feed consumed by the website widget (defaults to `ld/data/leads.json`).
 - `--csv-output`: optional CSV path if you still want an export (use `--overwrite` to restart the file).
 - `--pages` / `--delay`: tune how far the script paginates Google Maps and how politely it waits between SerpApi calls.
 - `--sender-name`: the name that appears in the closing of the generated email body (default `Evergreen Media Labs`).
@@ -365,7 +365,7 @@ The generator writes every verified lead to the JSON feed so the front-end can r
 
 ## Website dashboard
 
-`web/lead-dashboard.html` is a standalone page (and the widget can be embedded anywhere) that renders a fullscreen, dark spreadsheet table under the `Evergreen Media Labs` header with the top-right “Polish / Send / Generate” buttons. The mock “Revi Design” row lives beneath a persistent column header (Lead, City, Category, Email, Status) and showcases the programmable status dropdown (Drafted/Approved) plus the delete control on the right. Every row reveals a summary plus Subject/Body copy when expanded.
+`ld/index.html` is a standalone page (and the widget can be embedded anywhere) that renders a fullscreen, dark spreadsheet table under the `Evergreen Media Labs` header with the top-right “Polish / Send / Generate” buttons. The mock “Revi Design” row lives beneath a persistent column header (Lead, City, Category, Email, Status) and showcases the programmable status dropdown (Drafted/Approved) plus the delete control on the right. Every row reveals a summary plus Subject/Body copy when expanded.
 
 Before the rest of the board is accessible, visitors must enter the approved credential pair (username `admin`, password `LG2608`) through the locked modal, which blurs the background and prevents interaction until you unlock it.
 
@@ -373,9 +373,9 @@ Before the rest of the board is accessible, visitors must enter the approved cre
 
 Copy these files to your existing site and point the widget at the generated JSON feed:
 
-1. `web/lead-widget.css` (styles)
-2. `web/lead-widget.js` (renders rows and controls interactions)
-3. `web/data/leads.json` (data feed from `lead_generator.py`)
+1. `ld/lead-widget.css` (styles)
+2. `ld/lead-widget.js` (renders rows and controls interactions)
+3. `ld/data/leads.json` (data feed from `lead_generator.py`)
 
 Use a snippet such as:
 
@@ -391,6 +391,6 @@ If you still want a classic spreadsheet for backup, pass the `--csv-output` flag
 
 ## Workflow suggestion
 
-1. Run `lead_generator.py` regularly (locally or via CI) to refresh `web/data/leads.json`.
-2. Open `web/lead-dashboard.html` or your embedded block to view the leads, expand rows, and edit the about/email copy.
+1. Run `lead_generator.py` regularly (locally or via CI) to refresh `ld/data/leads.json`.
+2. Open `ld/index.html` or your embedded block to view the leads, expand rows, and edit the about/email copy.
 3. Use the generated email body text to reach out, or export the CSV if you need to share the list.
