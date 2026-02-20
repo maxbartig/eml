@@ -91,7 +91,7 @@ body.auth-locked .lead-dashboard {
   background: rgba(2, 6, 18, 0.92);
   z-index: 1300;
   transition: opacity 0.2s ease, visibility 0.2s ease;
-  backdrop-filter: blur(18px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
 }
 
 .generate-overlay__panel {
