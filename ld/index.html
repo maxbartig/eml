@@ -226,8 +226,6 @@ Owner of Evergreen Media Labs</textarea>
             .filter((entry) => entry.niche && entry.count > 0);
         };
 
-        const generateFormSubmit = form?.querySelector(".generate-overlay__submit");
-
         const setStatus = (message, isError = false) => {
           result.textContent = message;
           result.style.color = isError ? "#f87171" : "#d4ffdf";
