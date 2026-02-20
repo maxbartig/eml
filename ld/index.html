@@ -33,7 +33,7 @@
           <div class="lead-dashboard__actions">
             <button class="lead-dashboard__action">Polish</button>
             <button class="lead-dashboard__action">Send</button>
-            <button class="lead-dashboard__action lead-dashboard__action--primary">Generate</button>
+            <button class="lead-dashboard__action lead-dashboard__action--primary" id="openGenerate">Generate</button>
           </div>
         </header>
         <section class="lead-dashboard__filters">
@@ -93,6 +93,25 @@ Owner of Evergreen Media Labs</textarea>
         </section>
       </main>
     </div>
+    <div class="generate-overlay is-hidden" id="generateOverlay">
+      <div class="generate-overlay__panel">
+        <header class="generate-overlay__header">
+          <h2>Queue a search</h2>
+          <button type="button" class="generate-overlay__close" id="closeGenerate" aria-label="Close">×</button>
+        </header>
+        <p class="generate-overlay__subtitle">
+          Tell me which niches to hunt and how many businesses per niche.
+        </p>
+        <form id="generateForm" class="generate-overlay__form">
+          <div id="generateInputs" class="generate-overlay__inputs"></div>
+          <button type="button" id="addGenerateRow" class="generate-overlay__add">
+            + Add another niche
+          </button>
+          <button type="submit" class="generate-overlay__submit">Start generation</button>
+          <p class="generate-overlay__result" id="generateResult" aria-live="polite"></p>
+        </form>
+      </div>
+    </div>
     <script src="lead-widget.js"></script>
     <script>
       (function () {
@@ -135,6 +154,86 @@ Owner of Evergreen Media Labs</textarea>
           } else {
             errorEl.textContent = "Incorrect username or password.";
           }
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        const openButton = document.getElementById("openGenerate");
+        const overlay = document.getElementById("generateOverlay");
+        const closeButton = document.getElementById("closeGenerate");
+        const form = document.getElementById("generateForm");
+        const inputs = document.getElementById("generateInputs");
+        const addRowButton = document.getElementById("addGenerateRow");
+        const result = document.getElementById("generateResult");
+        const AUTH_STORAGE = "lead-dashboard-auth";
+
+        const show = () => {
+          overlay?.classList.remove("is-hidden");
+          document.body.classList.add("auth-locked");
+        };
+
+        const hide = () => {
+          overlay?.classList.add("is-hidden");
+          if (sessionStorage.getItem(AUTH_STORAGE) === "true") {
+            document.body.classList.remove("auth-locked");
+          }
+        };
+
+        const createRow = () => {
+          const row = document.createElement("div");
+          row.className = "generate-row";
+          row.innerHTML = `
+            <input type="text" name="niche" placeholder="Category (e.g. landscaping)" required />
+            <input type="number" name="count" min="1" value="1" required />
+            <button type="button" class="generate-row__remove" aria-label="Remove niche">×</button>
+          `;
+          row.querySelector(".generate-row__remove")?.addEventListener("click", () => row.remove());
+          return row;
+        };
+
+        const resetRows = () => {
+          inputs.innerHTML = "";
+          inputs.appendChild(createRow());
+        };
+
+        openButton?.addEventListener("click", (event) => {
+          event.preventDefault();
+          resetRows();
+          result.textContent = "";
+          show();
+        });
+
+        closeButton?.addEventListener("click", hide);
+
+        overlay?.addEventListener("click", (event) => {
+          if (event.target === overlay) {
+            hide();
+          }
+        });
+
+        addRowButton?.addEventListener("click", () => inputs.appendChild(createRow()));
+
+        form?.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const rows = Array.from(inputs.querySelectorAll(".generate-row"));
+          const payload = rows
+            .map((row) => {
+              const nicheInput = row.querySelector("input[name='niche']");
+              const countInput = row.querySelector("input[name='count']");
+              const niche = nicheInput ? nicheInput.value.trim() : "";
+              const count = Number((countInput ? countInput.value : "") || 0);
+              return { niche, count };
+            })
+            .filter((entry) => entry.niche && entry.count > 0);
+
+          if (!payload.length) {
+            result.textContent = "Give me at least one niche with a quantity.";
+            return;
+          }
+
+          const total = payload.reduce((sum, entry) => sum + entry.count, 0);
+          result.textContent = `Queued ${total} leads across ${payload.length} niche(s).`;
         });
       })();
     </script>

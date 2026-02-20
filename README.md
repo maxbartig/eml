@@ -365,7 +365,9 @@ The generator writes every verified lead to the JSON feed so the front-end can r
 
 ## Website dashboard
 
-`ld/index.html` is a standalone page (and the widget can be embedded anywhere) that renders a fullscreen, dark spreadsheet table under the `Evergreen Media Labs` header with the top-right “Polish / Send / Generate” buttons. The mock “Revi Design” row lives beneath a persistent column header (Lead, City, Category, Email, Status) and showcases the programmable status dropdown (Drafted/Approved) plus the delete control on the right. Every row reveals a summary plus Subject/Body copy when expanded.
+`ld/index.html` is a standalone page (and the widget can be embedded anywhere) that renders a fullscreen, dark spreadsheet table under the `Evergreen Media Labs` header with the top-right “Polish / Send / Generate” buttons.  
+Clicking **Generate** opens a modal where you can add one or more niches plus the number of leads to look for in each category; hit “Start generation” to queue the counts and keep the modal open long enough to see the confirmation text.  
+The mock “Revi Design” row lives beneath a persistent column header (Lead, City, Category, Email, Status) and showcases the programmable status dropdown (Drafted/Approved) plus the delete control on the right. Every row reveals a summary plus Subject/Body copy when expanded.
 
 Before the rest of the board is accessible, visitors must enter the approved credential pair (username `admin`, password `LG2608`) through the locked modal, which blurs the background and prevents interaction until you unlock it.
 
