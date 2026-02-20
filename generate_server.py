@@ -18,8 +18,8 @@ CITY_CONTEXT = 'Wausau, Wisconsin, United States'
 SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
-CORS(app, origins="https://evergreenmedialabs.com")
 app = Flask(__name__)
+CORS(app, origins="https://evergreenmedialabs.com")
 
 
 def load_leads() -> List[Dict]:
