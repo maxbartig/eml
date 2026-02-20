@@ -84,6 +84,8 @@ function initChat() {
   const form = document.getElementById('chatForm');
   const input = document.getElementById('chatInput');
   const suggestionButtons = document.querySelectorAll('#chatSuggestions button');
+  const menuToggle = document.getElementById('menuToggle');
+  const mobileDrawer = document.getElementById('mobileDrawer');
 
   if (trigger) trigger.addEventListener('click', openChat);
   if (close) close.addEventListener('click', closeChat);
@@ -150,6 +152,44 @@ function initChat() {
       setTimeout(closeModal, 2500);
     });
   }
+
+  function closeDrawer() {
+    if (!mobileDrawer || !menuToggle) return;
+    mobileDrawer.style.display = 'none';
+    menuToggle.classList.remove('open');
+    mobileDrawer.setAttribute('aria-hidden', 'true');
+  }
+
+  function openDrawer() {
+    if (!mobileDrawer || !menuToggle) return;
+    mobileDrawer.style.display = 'flex';
+    menuToggle.classList.add('open');
+    mobileDrawer.setAttribute('aria-hidden', 'false');
+  }
+
+  if (menuToggle) {
+    menuToggle.addEventListener('click', () => {
+      if (!mobileDrawer) return;
+      if (mobileDrawer.style.display === 'flex') {
+        closeDrawer();
+      } else {
+        openDrawer();
+      }
+    });
+  }
+
+  document.querySelectorAll('.mobile-drawer nav a').forEach((link) => {
+    link.addEventListener('click', () => {
+      closeDrawer();
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      closeDrawer();
+      closeModal();
+    }
+  });
 
   document.querySelectorAll('a[data-scroll]').forEach((link) => {
     link.addEventListener('click', (event) => {

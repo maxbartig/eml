@@ -14,18 +14,33 @@
 </head>
 <body>
   <header class="site-header">
-      <div class="logo" aria-label="Evergreen Media Labs">🌲</div>
-      <nav>
-        <a href="#portfolio" data-scroll="#gallery">Portfolio</a>
-        <a href="#reviews" data-scroll="#reviews">Reviews</a>
-        <a href="#process" data-scroll="#process">Process</a>
-        <a href="#contact" data-contact>Contact</a>
-      </nav>
-      <div class="header-actions">
-        <button class="ghost chat-trigger" id="chatTrigger">Chat</button>
-        <button class="primary" data-contact>Get started</button>
-      </div>
-    </header>
+    <button class="logo" aria-label="Evergreen Media Labs">🌲</button>
+    <nav class="desktop-nav">
+      <a href="#gallery" data-scroll="#gallery">Portfolio</a>
+      <a href="#reviews" data-scroll="#reviews">Reviews</a>
+      <a href="#process" data-scroll="#process">Process</a>
+      <a href="#contact" data-contact>Contact</a>
+    </nav>
+    <div class="header-actions">
+      <button class="ghost chat-trigger" id="chatTrigger">Chat</button>
+      <button class="primary" data-contact>Get started</button>
+    </div>
+    <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </header>
+  <div class="mobile-drawer" id="mobileDrawer" aria-hidden="true">
+    <nav>
+      <a href="#gallery" data-scroll="#gallery">Portfolio</a>
+      <a href="#reviews" data-scroll="#reviews">Reviews</a>
+      <a href="#process" data-scroll="#process">Process</a>
+      <a href="#contact" data-contact>Contact</a>
+      <button class="ghost chat-trigger" id="chatTriggerMobile">Chat</button>
+      <button class="primary drawer-cta" data-contact>Get started</button>
+    </nav>
+  </div>
 
     <section class="hero" id="home">
         <div class="hero-inner">
