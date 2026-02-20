@@ -9,7 +9,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from serpapi import GoogleSearch
+from serpapi import Client
 import openai
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -17,6 +17,7 @@ LEADS_PATH = BASE_DIR / 'ld' / 'data' / 'leads.json'
 CITY_CONTEXT = 'Wausau, Wisconsin, United States'
 SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+SERPAPI_CLIENT = Client(api_key=SERPAPI_API_KEY) if SERPAPI_API_KEY else None
 
 app = Flask(__name__)
 CORS(app, origins="https://evergreenmedialabs.com")
@@ -34,6 +35,8 @@ def save_leads(leads: List[Dict]) -> None:
 
 
 def serpapi_search(niche: str, start: int) -> Dict:
+    if not SERPAPI_CLIENT:
+        raise RuntimeError('SERPAPI_API_KEY is required to query SerpApi')
     params = {
         'engine': 'google_maps',
         'type': 'search',
@@ -43,7 +46,10 @@ def serpapi_search(niche: str, start: int) -> Dict:
         'start': start,
         'api_key': SERPAPI_API_KEY,
     }
-    return GoogleSearch(params).get_dict()
+    result = SERPAPI_CLIENT.search(params=params)
+    if hasattr(result, 'as_dict'):
+        return result.as_dict()
+    return dict(result or {})
 
 
 def extract_businesses(payload: Dict) -> Iterable[Dict]:
