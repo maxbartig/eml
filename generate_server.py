@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
 
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from serpapi import GoogleSearch
 import openai
 
@@ -17,6 +18,7 @@ CITY_CONTEXT = 'Wausau, Wisconsin, United States'
 SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
+CORS(app, origins="https://evergreenmedialabs.com")
 app = Flask(__name__)
 
 
