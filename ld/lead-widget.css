@@ -97,10 +97,10 @@ body.auth-locked .lead-dashboard {
 .generate-overlay__panel {
   background: var(--panel);
   border-radius: 1rem;
-  padding: 2rem;
-  width: min(420px, 90vw);
+  padding: 2.5rem;
+  width: min(540px, 95vw);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 25px 60px rgba(2, 7, 18, 0.7);
+  box-shadow: 0 30px 80px rgba(2, 7, 18, 0.8);
 }
 
 .generate-overlay__header {
