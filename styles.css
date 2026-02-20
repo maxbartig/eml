@@ -43,7 +43,7 @@ body {
 }
 
 .desktop-nav {
-  display: flex;
+  display: none;
   gap: 1.25rem;
   margin-left: auto;
 }
@@ -56,7 +56,7 @@ body {
 }
 
 .header-actions {
-  display: flex;
+  display: none;
   gap: 0.75rem;
 }
 
@@ -671,16 +671,21 @@ footer {
 }
 
 @media (max-width: 1024px) {
-  .desktop-nav,
-  .header-actions {
-    display: none;
-  }
-
   .menu-toggle {
     display: flex;
   }
+}
 
-  .site-header {
-    gap: 0.5rem;
+@media (min-width: 1025px) {
+  .desktop-nav {
+    display: flex;
+  }
+
+  .header-actions {
+    display: flex;
+  }
+
+  .menu-toggle {
+    display: none;
   }
 }
