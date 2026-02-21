@@ -219,6 +219,7 @@ body.auth-locked .lead-dashboard {
 
 html,
 body {
+  min-height: 100%;
   width: 100%;
 }
 
@@ -227,14 +228,16 @@ body {
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   background: radial-gradient(circle at top, #101826 0%, #050914 45%);
   color: var(--text);
-  min-height: 120vh;
-  display: block;
+  min-height: 100vh;
+}
+
+body {
+  min-height: 100vh;
 }
 
 .lead-dashboard {
-  flex: 1;
   width: 100%;
-  min-height: 100vh;
+}
   padding: 2.5rem;
   background: var(--panel);
   border-radius: 0;
