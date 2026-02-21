@@ -54,18 +54,6 @@ const formatSentTimestamp = (value) => {
   return parsed.toLocaleString();
 };
 
-const renderSentStatus = (lead) => {
-  const status = (lead.status || 'queued').toLowerCase();
-  if (status === 'queued') {
-    return '<span class="mock-lead-bar__status mock-lead-bar__status--queued">Queued to send</span>';
-  }
-  if (status === 'sent') {
-    const sentAt = formatSentTimestamp(lead.sent_at);
-    return `<span class="mock-lead-bar__status mock-lead-bar__status--sent">Sent${sentAt ? ` at ${sentAt}` : ''}</span>`;
-  }
-  return `<span class="mock-lead-bar__status">${escapeHtml(status)}</span>`;
-};
-
 const renderStatusSelect = (lead, currentStatus) => {
   const placeId = lead.place_id || '';
   const isDisabled = !placeId;
@@ -74,6 +62,24 @@ const renderStatusSelect = (lead, currentStatus) => {
       <option value="Drafted"${currentStatus === 'Drafted' ? ' selected' : ''}>Drafted</option>
       <option value="Approved"${currentStatus === 'Approved' ? ' selected' : ''}>Approved</option>
     </select>
+  `;
+};
+
+const SENT_TAB_STATUSES = ['sent', 'queued'];
+
+const renderSentStatusControls = (lead) => {
+  const placeId = lead.place_id || '';
+  const isDisabled = !placeId;
+  const normalizedStatus = (lead.status || 'queued').toLowerCase();
+  const sentAt = formatSentTimestamp(lead.sent_at);
+  return `
+    <div class="mock-lead-bar__sent-wrapper">
+      <select class="mock-lead-bar__select mock-lead-bar__select--sent" data-status-sent="${escapeHtml(placeId)}" ${isDisabled ? 'disabled' : ''}>
+        <option value="queued"${normalizedStatus === 'queued' ? ' selected' : ''}>Queued</option>
+        <option value="sent"${normalizedStatus === 'sent' ? ' selected' : ''}>Sent</option>
+      </select>
+      ${sentAt ? `<span class="mock-lead-bar__sent-timestamp">Sent at ${escapeHtml(sentAt)}</span>` : ''}
+    </div>
   `;
 };
 
@@ -88,7 +94,7 @@ const renderLeadSummary = (lead, index, isSentTab) => {
     ? `<button type="button" class="mock-lead-bar__delete" data-delete="${lead.place_id}">Delete</button>`
     : '<button type="button" class="mock-lead-bar__delete" disabled aria-hidden="true" style="visibility:hidden">Delete</button>';
   const statusControl = isSentTab
-    ? `${renderSentStatus(lead)} ${deleteButton}`
+    ? `${renderSentStatusControls(lead)} ${deleteButton}`
     : `${renderStatusSelect(lead, status)} ${deleteButton}`;
 
   return `
@@ -163,7 +169,8 @@ const renderLeads = () => {
       return false;
     }
     if (activeTab === 'sent') {
-      return (lead.status || '').toLowerCase() === 'sent';
+      const statusKey = (lead.status || 'queued').toLowerCase();
+      return SENT_TAB_STATUSES.includes(statusKey);
     }
     return (lead.status || '').toLowerCase() !== 'sent';
   });
@@ -215,6 +222,22 @@ const renderLeads = () => {
         } catch (error) {
           console.error('Status update failed', error);
           select.value = select.value === 'Drafted' ? 'Approved' : 'Drafted';
+        }
+      });
+    });
+  } else {
+    container.querySelectorAll('[data-status-sent]').forEach((select) => {
+      select.addEventListener('change', async () => {
+        const placeId = select.getAttribute('data-status-sent');
+        try {
+          await fetch(`${endpoint}/leads/${placeId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: select.value }),
+          });
+          await refreshLeads();
+        } catch (error) {
+          console.error('Sent status update failed', error);
         }
       });
     });

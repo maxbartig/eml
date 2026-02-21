@@ -518,6 +518,23 @@ details.mock-lead-bar summary::-webkit-details-marker,
   font-weight: 600;
 }
 
+.mock-lead-bar__sent-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mock-lead-bar__select--sent {
+  max-width: 180px;
+}
+
+.mock-lead-bar__sent-timestamp {
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
 .mock-lead-bar__delete:hover {
   background: rgba(249, 115, 22, 0.1);
 }
