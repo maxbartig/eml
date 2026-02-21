@@ -20,6 +20,7 @@ const searchInput = document.getElementById('search-input');
 const tabButtons = document.querySelectorAll('[data-lead-tab]');
 const sendButton = document.getElementById('sendQueueButton');
 const sendStatusEl = document.getElementById('sendStatus');
+const reloadButton = document.getElementById('reloadLeadsButton');
 
 let cachedLeads = [];
 let searchTerm = '';
@@ -27,6 +28,8 @@ let activeTab = 'all';
 let tabsInitialized = false;
 let searchInitialized = false;
 let sendInitialized = false;
+let refreshInProgress = false;
+let pendingAutoRefresh = null;
 
 const iconChevron = `<svg viewBox="0 0 10 6" role="presentation" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -39,6 +42,40 @@ const escapeHtml = (value) =>
     .replace(/'/g, '&#39;');
 
 const formatCell = (value, placeholder = '—') => escapeHtml(value || placeholder);
+
+const formatSentTimestamp = (value) => {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.valueOf())) {
+    return null;
+  }
+  return parsed.toLocaleString();
+};
+
+const renderSentStatus = (lead) => {
+  const status = (lead.status || 'queued').toLowerCase();
+  if (status === 'queued') {
+    return '<span class="mock-lead-bar__status mock-lead-bar__status--queued">Queued to send</span>';
+  }
+  if (status === 'sent') {
+    const sentAt = formatSentTimestamp(lead.sent_at);
+    return `<span class="mock-lead-bar__status mock-lead-bar__status--sent">Sent${sentAt ? ` at ${sentAt}` : ''}</span>`;
+  }
+  return `<span class="mock-lead-bar__status">${escapeHtml(status)}</span>`;
+};
+
+const renderStatusSelect = (lead, currentStatus) => {
+  const placeId = lead.place_id || '';
+  const isDisabled = !placeId;
+  return `
+    <select class="mock-lead-bar__select" data-status="${escapeHtml(placeId)}" ${isDisabled ? 'disabled' : ''}>
+      <option value="Drafted"${currentStatus === 'Drafted' ? ' selected' : ''}>Drafted</option>
+      <option value="Approved"${currentStatus === 'Approved' ? ' selected' : ''}>Approved</option>
+    </select>
+  `;
+};
 
 const renderLeadSummary = (lead, index) => {
   const city = lead.city || (lead.address || '').split(',')[1]?.trim() || '—';
@@ -53,12 +90,10 @@ const renderLeadSummary = (lead, index) => {
         <span class="mock-lead-bar__text">${escapeHtml(lead.name || 'Unknown')}</span>
         <span class="mock-lead-bar__text">${escapeHtml(city)}</span>
         <span class="mock-lead-bar__text">${escapeHtml(category)}</span>
-        <span class="mock-lead-bar__text">${escapeHtml(email)}</span>
+        <span class="mock-lead-bar__text mock-lead-bar__text--email">${escapeHtml(email)}</span>
+        <span class="mock-lead-bar__text mock-lead-bar__text--status">${renderSentStatus(lead)}</span>
         <div class="mock-lead-bar__actions">
-          <select class="mock-lead-bar__select" data-status="${lead.place_id}">
-            <option value="Drafted"${status === 'Drafted' ? ' selected' : ''}>Drafted</option>
-            <option value="Approved"${status === 'Approved' ? ' selected' : ''}>Approved</option>
-          </select>
+          ${renderStatusSelect(lead, status)}
           <button type="button" class="mock-lead-bar__delete" ${lead.place_id ? `data-delete="${lead.place_id}"` : 'disabled aria-hidden="true" style="visibility:hidden"'}>Delete</button>
         </div>
       </summary>
@@ -94,16 +129,25 @@ const updateTabState = () => {
 
 const refreshLeads = async () => {
   if (!container) {
-    return;
+    return [];
   }
-  const leadEndpoint = `${endpoint}/leads`;
-  const response = await fetch(leadEndpoint, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`Failed to load leads: ${response.status}`);
+  if (refreshInProgress) {
+    return cachedLeads;
   }
-  const data = await response.json();
-  cachedLeads = Array.isArray(data) ? data : [];
-  renderLeads();
+  refreshInProgress = true;
+  try {
+    const leadEndpoint = `${endpoint}/leads`;
+    const response = await fetch(leadEndpoint, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Failed to load leads: ${response.status}`);
+    }
+    const data = await response.json();
+    cachedLeads = Array.isArray(data) ? data : [];
+    renderLeads();
+    return cachedLeads;
+  } finally {
+    refreshInProgress = false;
+  }
 };
 
 const renderLeads = () => {
@@ -179,6 +223,16 @@ const deleteLead = async (id) => {
     throw new Error('Unable to delete lead');
   }
   return response.json();
+};
+
+const scheduleRefresh = () => {
+  if (pendingAutoRefresh) {
+    clearTimeout(pendingAutoRefresh);
+  }
+  pendingAutoRefresh = setTimeout(() => {
+    refreshLeads();
+    pendingAutoRefresh = null;
+  }, 1500);
 };
 
 const attachSearchListener = () => {

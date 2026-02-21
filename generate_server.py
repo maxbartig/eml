@@ -84,6 +84,19 @@ def save_leads(leads: List[Dict]) -> None:
         coll.insert_many(leads)
 
 
+def _queue_approved_leads_for_sending() -> int:
+    leads = load_leads()
+    queued = 0
+    for lead in leads:
+        if (lead.get('status') or '').lower() == 'approved':
+            lead['status'] = 'Queued'
+            lead['queued_at'] = datetime.datetime.utcnow().isoformat()
+            queued += 1
+    if queued:
+        save_leads(leads)
+    return queued
+
+
 SEND_THREAD_LOCK = threading.Lock()
 SEND_THREAD: Optional[threading.Thread] = None
 
@@ -116,7 +129,7 @@ def _process_send_queue() -> None:
             targets = [
                 lead
                 for lead in leads
-                if (lead.get('status') or '').lower() == 'approved' and not lead.get('sent_at')
+                if (lead.get('status') or '').lower() == 'queued' and not lead.get('sent_at')
             ]
             if not targets:
                 app.logger.info('Send queue empty, stopping worker')
@@ -367,13 +380,24 @@ def generate_leads() -> Tuple[str, int]:
 
     leads = load_leads()
     names = {lead.get('name', '').lower() for lead in leads}
+    total_requested = sum(count for _, count in instructions)
     generated = build_payload(instructions, names)
     if not generated:
-        return jsonify({'message': 'No new leads were generated'}), 200
+        return jsonify({'message': 'No new leads were generated', 'requested': total_requested, 'generated': 0}), 200
 
     leads.extend(generated)
     save_leads(leads)
-    return jsonify({'message': 'Generated leads', 'count': len(generated)}), 200
+    return (
+        jsonify(
+            {
+                'message': 'Generated leads',
+                'count': len(generated),
+                'requested': total_requested,
+                'generated': len(generated),
+            }
+        ),
+        200,
+    )
 
 
 @app.route('/leads', methods=['GET'])
@@ -402,7 +426,7 @@ def delete_lead(place_id: str) -> Tuple[str, int]:
 def update_status(place_id: str) -> Tuple[str, int]:
     payload = request.get_json() or {}
     status = payload.get('status')
-    if status not in ('Drafted', 'Approved'):
+    if status not in ('Drafted', 'Approved', 'Queued', 'Sent'):
         return jsonify({'error': 'Invalid status'}), 400
     coll = _get_collection()
     if coll is not None:
@@ -427,10 +451,15 @@ def update_status(place_id: str) -> Tuple[str, int]:
 def trigger_send() -> Tuple[str, int]:
     if not BREVO_API_KEY:
         return jsonify({'error': 'BREVO_API_KEY is required to send emails'}), 400
-    started = _ensure_send_thread()
-    if started:
-        return jsonify({'message': 'Send queue started'}), 200
-    return jsonify({'message': 'Send queue already running'}), 200
+    queued = _queue_approved_leads_for_sending()
+    thread_started = _ensure_send_thread()
+    if queued:
+        message = f'Queued {queued} lead{"s" if queued != 1 else ""} for send'
+    elif not thread_started:
+        message = 'Send queue already running'
+    else:
+        message = 'No approved leads to queue'
+    return jsonify({'message': message, 'queued': queued}), 200
 
 
 def parse_args() -> argparse.Namespace:
