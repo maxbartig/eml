@@ -10,7 +10,7 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from serpapi import Client
-import openai
+from openai import OpenAI
 
 BASE_DIR = Path(__file__).resolve().parent
 LEADS_PATH = BASE_DIR / 'ld' / 'data' / 'leads.json'
@@ -18,6 +18,7 @@ CITY_CONTEXT = 'Wausau, Wisconsin, United States'
 SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 SERPAPI_CLIENT = Client(api_key=SERPAPI_API_KEY) if SERPAPI_API_KEY else None
+OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 app = Flask(__name__)
 CORS(app, origins="https://evergreenmedialabs.com")
@@ -97,14 +98,15 @@ def ai_prompt(name: str, city: str, category: str, rating: str) -> str:
 
 
 def call_openai(prompt: str) -> Dict[str, str]:
-    openai.api_key = OPENAI_API_KEY
-    resp = openai.ChatCompletion.create(
+    if not OPENAI_CLIENT:
+        raise RuntimeError('OPENAI_API_KEY is required to call OpenAI')
+    resp = OPENAI_CLIENT.chat.completions.create(
         model='gpt-4o-mini',
         messages=[{'role': 'user', 'content': prompt}],
         temperature=0.35,
         max_tokens=400,
     )
-    content = resp.choices[0].message.get('content', '').strip()
+    content = resp.choices[0].message.content.strip()
     try:
         return json.loads(content)
     except json.JSONDecodeError as exc:
