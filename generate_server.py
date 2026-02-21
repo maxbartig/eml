@@ -5,7 +5,8 @@ import json
 import os
 import textwrap
 from pathlib import Path
-from typing import Dict, Iterable, List, Sequence, Tuple
+import re
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -15,6 +16,7 @@ from openai import OpenAI
 BASE_DIR = Path(__file__).resolve().parent
 LEADS_PATH = BASE_DIR / 'ld' / 'data' / 'leads.json'
 CITY_CONTEXT = 'Wausau, Wisconsin, United States'
+EMAIL_RX = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 SERPAPI_CLIENT = Client(api_key=SERPAPI_API_KEY) if SERPAPI_API_KEY else None
@@ -78,6 +80,7 @@ def extract_businesses(payload: Dict) -> Iterable[Dict]:
             'maps_url': place.get('link') or place.get('maps'),
             'rating': place.get('rating') or place.get('reviews', {}).get('rating'),
             'city': CITY_CONTEXT,
+            'email': place.get('email') or place.get('emails') or place.get('website') or place.get('webpage'),
             'website': place.get('website') or place.get('website_url') or place.get('webpage'),
             'has_website': _has_website(place),
         }
@@ -132,6 +135,62 @@ def call_openai(prompt: str) -> Dict[str, str]:
         raise RuntimeError(f"OpenAI response could not be parsed as JSON: {content}") from exc
 
 
+def _find_email(payload: Dict) -> Optional[str]:
+    email_candidates = [
+        payload.get('email'),
+        payload.get('emails'),
+        payload.get('website'),
+        payload.get('webpage'),
+    ]
+    for candidate in email_candidates:
+        if candidate and isinstance(candidate, str) and '@' in candidate:
+            return candidate
+    return None
+
+
+def _find_email(payload: Dict) -> Optional[str]:
+    email_candidates = [
+        payload.get('email'),
+        payload.get('emails'),
+        payload.get('website'),
+        payload.get('webpage'),
+    ]
+    for candidate in email_candidates:
+        if candidate and isinstance(candidate, str):
+            match = EMAIL_RX.search(candidate)
+            if match:
+                return match.group(0)
+    return None
+
+
+def _search_for_email(name: str, city: str) -> Optional[str]:
+    if not SERPAPI_CLIENT:
+        return None
+    params = {
+        'engine': 'google',
+        'q': f"{name} {city} email",
+        'google_domain': 'google.com',
+        'hl': 'en',
+        'gl': 'us',
+        'api_key': SERPAPI_API_KEY,
+    }
+    try:
+        result = SERPAPI_CLIENT.search(params=params)
+    except Exception:
+        return None
+    data = result.as_dict() if hasattr(result, 'as_dict') else dict(result or {})
+    for bucket in data.get('organic_results', []):
+        snippet = bucket.get('snippet', '') or ''
+        match = EMAIL_RX.search(snippet)
+        if match:
+            return match.group(0)
+    answer_box = data.get('answer_box') or {}
+    email = answer_box.get('email')
+    if email and EMAIL_RX.search(email):
+        return EMAIL_RX.search(email).group(0)
+    return None
+
+
 def build_payload(instructions: Sequence[Dict[str, int]], existing_names: set) -> List[Dict]:
     generated = []
     for niche, count in instructions:
@@ -149,6 +208,9 @@ def build_payload(instructions: Sequence[Dict[str, int]], existing_names: set) -
                 rating = place.get('rating')
                 if place.get('has_website'):
                     continue
+                email_address = _find_email(place) or _search_for_email(name, place['city'])
+                if not email_address:
+                    continue
                 ai_output = call_openai(ai_prompt(name, place['city'], niche, rating or ""))
                 generated.append(
                     {
@@ -161,7 +223,7 @@ def build_payload(instructions: Sequence[Dict[str, int]], existing_names: set) -
                         'about': ai_output['about'],
                         'email_subject': f"Quick idea for {name}",
                         'email_body': f"Hello,\n\n{ai_output['email']}\n\nThank you,\nOwner of Evergreen Media Labs",
-                        'email': place.get('phone') or '',
+                        'email': email_address,
                         'validation_notes': 'Generated via automation',
                         'rating': rating,
                     }
