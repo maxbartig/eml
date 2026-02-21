@@ -260,6 +260,7 @@ def build_payload(instructions: Sequence[Dict[str, int]], existing_names: set) -
                         'email_subject': f"Quick idea for {name}",
                         'email_body': f"Hello,\n\n{ai_output['email']}\n\nThank you,\nOwner of Evergreen Media Labs",
                         'email': email_address,
+                        'status': 'Drafted',
                         'validation_notes': 'Generated via automation',
                         'rating': rating,
                     }
@@ -319,6 +320,31 @@ def delete_lead(place_id: str) -> Tuple[str, int]:
         return jsonify({'error': 'Lead not found'}), 404
     save_leads(updated)
     return jsonify({'message': 'Lead deleted', 'count': len(updated)}), 200
+
+
+@app.route('/leads/<place_id>/status', methods=['PATCH'])
+def update_status(place_id: str) -> Tuple[str, int]:
+    payload = request.get_json() or {}
+    status = payload.get('status')
+    if status not in ('Drafted', 'Approved'):
+        return jsonify({'error': 'Invalid status'}), 400
+    coll = _get_collection()
+    if coll is not None:
+        result = coll.update_one({'place_id': place_id}, {'$set': {'status': status}})
+        if result.matched_count == 0:
+            return jsonify({'error': 'Lead not found'}), 404
+        return jsonify({'message': 'Status updated'}), 200
+    leads = load_leads()
+    found = False
+    for lead in leads:
+        if lead.get('place_id') == place_id:
+            lead['status'] = status
+            found = True
+            break
+    if not found:
+        return jsonify({'error': 'Lead not found'}), 404
+    save_leads(leads)
+    return jsonify({'message': 'Status updated'}), 200
 
 
 def parse_args() -> argparse.Namespace:

@@ -43,9 +43,9 @@ const renderLeadSummary = (lead, index) => {
         <span class="mock-lead-bar__text">${escapeHtml(category)}</span>
         <span class="mock-lead-bar__text">${escapeHtml(email)}</span>
         <div class="mock-lead-bar__actions">
-          <select class="mock-lead-bar__select">
-            <option value="drafted"${status === 'Drafted' ? ' selected' : ''}>Drafted</option>
-            <option value="approved"${status === 'Approved' ? ' selected' : ''}>Approved</option>
+          <select class="mock-lead-bar__select" data-status="${lead.place_id}">
+            <option value="Drafted"${status === 'Drafted' ? ' selected' : ''}>Drafted</option>
+            <option value="Approved"${status === 'Approved' ? ' selected' : ''}>Approved</option>
           </select>
           <button type="button" class="mock-lead-bar__delete" ${lead.place_id ? `data-delete="${lead.place_id}"` : 'disabled aria-hidden="true" style="visibility:hidden"'}>Delete</button>
         </div>
@@ -95,6 +95,21 @@ const renderLeads = (leads) => {
         alert('Unable to delete that lead.');
       } finally {
         button.removeAttribute('disabled');
+      }
+    });
+  });
+  container.querySelectorAll('[data-status]').forEach((select) => {
+    select.addEventListener('change', async () => {
+      const placeId = select.getAttribute('data-status');
+      try {
+        await fetch(`${endpoint}/leads/${placeId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: select.value }),
+        });
+      } catch (error) {
+        console.error('Status update failed', error);
+        select.value = select.value === 'Drafted' ? 'Approved' : 'Drafted';
       }
     });
   });
