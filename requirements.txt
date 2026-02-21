@@ -3,3 +3,4 @@ flask-cors
 openai
 serpapi==0.1.5
 pymongo>=4.0.0
+certifi>=2024.11.28

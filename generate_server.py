@@ -7,6 +7,7 @@ import textwrap
 from pathlib import Path
 import re
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+import certifi
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -30,7 +31,10 @@ OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 app = Flask(__name__)
 client_kwargs = {'tls': True} if MONGODB_URI and MONGODB_URI.startswith('mongodb+srv') else {}
 if MONGODB_URI:
-    MONGO_CLIENT = MongoClient(MONGODB_URI, **client_kwargs)
+    tls_kwargs = {**client_kwargs}
+    if MONGODB_URI.startswith('mongodb+srv'):
+        tls_kwargs['tlsCAFile'] = certifi.where()
+    MONGO_CLIENT = MongoClient(MONGODB_URI, **tls_kwargs)
 else:
     MONGO_CLIENT = None
 
