@@ -36,7 +36,7 @@ const renderLeadSummary = (lead, index) => {
   const emailBody = lead.email_body || 'Email copy is being drafted by the generator.';
   const status = lead.status || 'Drafted';
   return `
-    <details class="mock-lead-bar" open data-lead-index="${index}">
+    <details class="mock-lead-bar" data-lead-index="${index}">
       <summary class="mock-lead-bar__summary">
         <span class="mock-lead-bar__text">${escapeHtml(lead.name || 'Unknown')}</span>
         <span class="mock-lead-bar__text">${escapeHtml(city)}</span>
