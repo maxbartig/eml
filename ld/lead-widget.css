@@ -365,6 +365,12 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.04);
   padding: 0.8rem 1rem;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 0.5rem;
 }
 
 details.mock-lead-bar {
