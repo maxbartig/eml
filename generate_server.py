@@ -53,6 +53,14 @@ def serpapi_search(niche: str, start: int) -> Dict:
     return dict(result or {})
 
 
+def _has_website(place: Dict) -> bool:
+    for key in ('website', 'website_url', 'webpage', 'websiteLink', 'homepage'):
+        value = place.get(key)
+        if value:
+            return True
+    return False
+
+
 def extract_businesses(payload: Dict) -> Iterable[Dict]:
     raw = payload.get('local_results') or []
     if isinstance(raw, dict):
@@ -70,6 +78,8 @@ def extract_businesses(payload: Dict) -> Iterable[Dict]:
             'maps_url': place.get('link') or place.get('maps'),
             'rating': place.get('rating') or place.get('reviews', {}).get('rating'),
             'city': CITY_CONTEXT,
+            'website': place.get('website') or place.get('website_url') or place.get('webpage'),
+            'has_website': _has_website(place),
         }
 
 
@@ -137,6 +147,8 @@ def build_payload(instructions: Sequence[Dict[str, int]], existing_names: set) -
                 if name.lower() in existing_names:
                     continue
                 rating = place.get('rating')
+                if place.get('has_website'):
+                    continue
                 ai_output = call_openai(ai_prompt(name, place['city'], niche, rating or ""))
                 generated.append(
                     {
