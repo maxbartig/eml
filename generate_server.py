@@ -97,6 +97,14 @@ def ai_prompt(name: str, city: str, category: str, rating: str) -> str:
     ).strip()
 
 
+def _find_json_block(text: str) -> str:
+    start = text.find('{')
+    end = text.rfind('}')
+    if start == -1 or end == -1:
+        return text.strip()
+    return text[start:end + 1]
+
+
 def call_openai(prompt: str) -> Dict[str, str]:
     if not OPENAI_CLIENT:
         raise RuntimeError('OPENAI_API_KEY is required to call OpenAI')
@@ -107,8 +115,9 @@ def call_openai(prompt: str) -> Dict[str, str]:
         max_tokens=400,
     )
     content = resp.choices[0].message.content.strip()
+    candidate = _find_json_block(content)
     try:
-        return json.loads(content)
+        return json.loads(candidate)
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"OpenAI response could not be parsed as JSON: {content}") from exc
 
