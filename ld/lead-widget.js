@@ -79,6 +79,9 @@ const renderLeads = (leads) => {
     </div>
     ${displayLeads.map(renderLeadSummary).join('')}
   `;
+  container.querySelectorAll('details.mock-lead-bar').forEach((details) => {
+    details.open = false;
+  });
 };
 
 const fetchLeads = async () => {
