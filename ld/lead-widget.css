@@ -219,7 +219,7 @@ body.auth-locked .lead-dashboard {
 
 html,
 body {
-  height: 100%;
+  width: 100%;
 }
 
 body {
@@ -227,9 +227,8 @@ body {
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   background: radial-gradient(circle at top, #101826 0%, #050914 45%);
   color: var(--text);
-  min-height: 100vh;
-  display: flex;
-  justify-content: stretch;
+  min-height: 120vh;
+  display: block;
 }
 
 .lead-dashboard {
@@ -365,12 +364,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.04);
   padding: 0.8rem 1rem;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  gap: 0.5rem;
+  display: block;
+  min-height: 120vh;
 }
 
 details.mock-lead-bar {
