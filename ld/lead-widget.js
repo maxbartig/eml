@@ -92,6 +92,20 @@ const updateTabState = () => {
   });
 };
 
+const refreshLeads = async () => {
+  if (!container) {
+    return;
+  }
+  const leadEndpoint = `${endpoint}/leads`;
+  const response = await fetch(leadEndpoint, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load leads: ${response.status}`);
+  }
+  const data = await response.json();
+  cachedLeads = Array.isArray(data) ? data : [];
+  renderLeads();
+};
+
 const renderLeads = () => {
   if (!container) {
     return;
@@ -130,7 +144,7 @@ const renderLeads = () => {
       button.setAttribute('disabled', 'disabled');
       try {
         await deleteLead(id);
-        await init();
+        await refreshLeads();
       } catch (error) {
         console.error('Delete failed', error);
         alert('Unable to delete that lead.');
@@ -148,7 +162,7 @@ const renderLeads = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: select.value }),
         });
-        await init();
+        await refreshLeads();
       } catch (error) {
         console.error('Status update failed', error);
         select.value = select.value === 'Drafted' ? 'Approved' : 'Drafted';
@@ -236,9 +250,6 @@ const init = async () => {
     }
     const data = await response.json();
     cachedLeads = Array.isArray(data) ? data : [];
-    attachSearchListener();
-    attachTabListeners();
-    attachSendButton();
     renderLeads();
   } catch (error) {
     console.error(error);
@@ -246,4 +257,15 @@ const init = async () => {
   }
 };
 
-init();
+const bootstrap = () => {
+  attachSearchListener();
+  attachTabListeners();
+  attachSendButton();
+  init();
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootstrap);
+} else {
+  bootstrap();
+}
