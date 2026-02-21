@@ -229,23 +229,33 @@ body {
   background: radial-gradient(circle at top, #101826 0%, #050914 45%);
   color: var(--text);
   min-height: 100vh;
-}
-
-body {
-  min-height: 100vh;
+  padding: 2.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
 }
 
 .lead-dashboard {
-  width: 100%;
-}
+  width: min(1200px, 100%);
   padding: 2.5rem;
   background: var(--panel);
-  border-radius: 0;
-  border: 0;
-  box-shadow: none;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 40px 80px rgba(5, 5, 15, 0.35);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+@media (max-width: 960px) {
+  body {
+    padding: 1.25rem;
+  }
+
+  .lead-dashboard {
+    padding: 1.5rem;
+    border-radius: 1.2rem;
+  }
 }
 
 .lead-dashboard__top {
