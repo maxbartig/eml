@@ -308,6 +308,10 @@ body::before {
 
 .rest-content {
   margin: 0;
+  background: linear-gradient(180deg, rgba(6, 40, 22, 0.98) 0%, rgba(4, 13, 8, 0.99) 45%, rgba(2, 6, 3, 0.98) 100%);
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 4rem;
 }
 
 .content-block {
