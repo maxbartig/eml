@@ -13,6 +13,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymongo import MongoClient
 from pymongo.collection import Collection
+from pymongo.errors import PyMongoError
 from serpapi import Client
 from openai import OpenAI
 
@@ -38,7 +39,7 @@ if MONGODB_URI:
 else:
     MONGO_CLIENT = None
 
-CORS(app, origins="https://evergreenmedialabs.com", methods=["GET", "POST", "DELETE", "OPTIONS"])
+CORS(app, origins="https://evergreenmedialabs.com", methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"])
 
 
 def _get_collection() -> Optional[Collection]:
