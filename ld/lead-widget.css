@@ -362,7 +362,7 @@ body {
 
 .mock-lead-header {
   display: grid;
-  grid-template-columns: repeat(4, minmax(140px, 1fr)) 240px;
+  grid-template-columns: 1.5fr 1fr 1fr 2fr 1.1fr 200px;
   gap: 1rem;
   text-transform: uppercase;
   font-size: 0.75rem;

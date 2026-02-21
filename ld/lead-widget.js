@@ -77,13 +77,20 @@ const renderStatusSelect = (lead, currentStatus) => {
   `;
 };
 
-const renderLeadSummary = (lead, index) => {
+const renderLeadSummary = (lead, index, isSentTab) => {
   const city = lead.city || (lead.address || '').split(',')[1]?.trim() || '—';
   const category = lead.category || lead.business_type || 'General';
   const email = lead.email || 'no email';
   const aboutCopy = lead.about || 'Description pending from the generator.';
   const emailBody = lead.email_body || 'Email copy is being drafted by the generator.';
   const status = lead.status || 'Drafted';
+  const deleteButton = lead.place_id
+    ? `<button type="button" class="mock-lead-bar__delete" data-delete="${lead.place_id}">Delete</button>`
+    : '<button type="button" class="mock-lead-bar__delete" disabled aria-hidden="true" style="visibility:hidden">Delete</button>';
+  const statusControl = isSentTab
+    ? `${renderSentStatus(lead)} ${deleteButton}`
+    : `${renderStatusSelect(lead, status)} ${deleteButton}`;
+
   return `
     <details class="mock-lead-bar" data-lead-index="${index}">
       <summary class="mock-lead-bar__summary">
@@ -91,11 +98,7 @@ const renderLeadSummary = (lead, index) => {
         <span class="mock-lead-bar__text">${escapeHtml(city)}</span>
         <span class="mock-lead-bar__text">${escapeHtml(category)}</span>
         <span class="mock-lead-bar__text mock-lead-bar__text--email">${escapeHtml(email)}</span>
-        <span class="mock-lead-bar__text mock-lead-bar__text--status">${renderSentStatus(lead)}</span>
-        <div class="mock-lead-bar__actions">
-          ${renderStatusSelect(lead, status)}
-          <button type="button" class="mock-lead-bar__delete" ${lead.place_id ? `data-delete="${lead.place_id}"` : 'disabled aria-hidden="true" style="visibility:hidden"'}>Delete</button>
-        </div>
+        <span class="mock-lead-bar__text mock-lead-bar__text--status">${statusControl}</span>
       </summary>
       <div class="mock-lead-bar__details">
         <label>
@@ -168,6 +171,7 @@ const renderLeads = () => {
     container.innerHTML = `<p class="lead-dashboard__empty">No leads match that search term.</p>`;
     return;
   }
+  const isSentTab = activeTab === 'sent';
   container.innerHTML = `
     <div class="mock-lead-header">
       <span>Lead</span>
@@ -176,7 +180,7 @@ const renderLeads = () => {
       <span>Email</span>
       <span class="mock-lead-header__actions">Status</span>
     </div>
-    ${filtered.map(renderLeadSummary).join('')}
+    ${filtered.map((lead, idx) => renderLeadSummary(lead, idx, isSentTab)).join('')}
   `;
   container.querySelectorAll('details.mock-lead-bar').forEach((details) => {
     details.open = false;
@@ -197,22 +201,24 @@ const renderLeads = () => {
       }
     });
   });
-  container.querySelectorAll('[data-status]').forEach((select) => {
-    select.addEventListener('change', async () => {
-      const placeId = select.getAttribute('data-status');
-      try {
-        await fetch(`${endpoint}/leads/${placeId}/status`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: select.value }),
-        });
-        await refreshLeads();
-      } catch (error) {
-        console.error('Status update failed', error);
-        select.value = select.value === 'Drafted' ? 'Approved' : 'Drafted';
-      }
+  if (!isSentTab) {
+    container.querySelectorAll('[data-status]').forEach((select) => {
+      select.addEventListener('change', async () => {
+        const placeId = select.getAttribute('data-status');
+        try {
+          await fetch(`${endpoint}/leads/${placeId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: select.value }),
+          });
+          await refreshLeads();
+        } catch (error) {
+          console.error('Status update failed', error);
+          select.value = select.value === 'Drafted' ? 'Approved' : 'Drafted';
+        }
+      });
     });
-  });
+  }
   updateTabState();
 };
 
