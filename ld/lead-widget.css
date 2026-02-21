@@ -316,6 +316,26 @@ body {
   gap: 0.5rem;
 }
 
+.lead-dashboard__filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.lead-dashboard__filter {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lead-dashboard__filter.is-active {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+
 .lead-dashboard__search input {
   background: transparent;
   border: 0;

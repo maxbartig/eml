@@ -40,14 +40,15 @@
           <div>
             <label for="search-input">Search</label>
             <div class="lead-dashboard__search">
-              <input id="search-input" type="text" placeholder="Search by name or address" />
+              <input id="search-input" type="text" placeholder="Search by name, city, or category" />
               <span>⌕</span>
             </div>
           </div>
-          <div class="lead-dashboard__tabs">
-            <button class="lead-dashboard__tab is-active">All</button>
-            <button class="lead-dashboard__tab">Awaiting email</button>
-            <button class="lead-dashboard__tab">Approved</button>
+          <div class="lead-dashboard__filter-buttons">
+            <button class="lead-dashboard__filter is-active" data-filter="All">All</button>
+            <button class="lead-dashboard__filter" data-filter="Sent">Sent</button>
+            <button class="lead-dashboard__filter" data-filter="Approved">Approved</button>
+            <button class="lead-dashboard__filter" data-filter="Drafted">Drafted</button>
           </div>
         </section>
         <section class="lead-dashboard__mock" data-lead-dashboard>

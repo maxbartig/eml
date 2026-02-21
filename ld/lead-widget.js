@@ -107,6 +107,7 @@ const renderLeads = (leads) => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: select.value }),
         });
+        await init();
       } catch (error) {
         console.error('Status update failed', error);
         select.value = select.value === 'Drafted' ? 'Approved' : 'Drafted';
