@@ -189,6 +189,12 @@ def generate_leads() -> Tuple[str, int]:
     return jsonify({'message': 'Generated leads', 'count': len(generated)}), 200
 
 
+@app.route('/leads', methods=['GET'])
+def get_leads() -> Tuple[str, int]:
+    leads = load_leads()
+    return jsonify(leads), 200
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Serve the Evergreen Media Labs generator.')
     parser.add_argument('--host', default='127.0.0.1', help='Host to bind .')

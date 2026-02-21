@@ -1,6 +1,6 @@
-const DEFAULT_SOURCE = './data/leads.json';
 const DASHBOARD_SELECTOR = '[data-lead-dashboard]';
 const container = document.querySelector(DASHBOARD_SELECTOR);
+const endpoint = container?.dataset.generateEndpoint?.replace(/\/generate$/, '') || 'https://evergreenmedialabs.com';
 
 const iconChevron = `<svg viewBox="0 0 10 6" role="presentation" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -99,8 +99,8 @@ const fetchLeads = async () => {
   if (!container) {
     return [];
   }
-  const source = container.dataset.source || DEFAULT_SOURCE;
-  const response = await fetch(source, { cache: 'no-store' });
+  const leadEndpoint = `${endpoint}/leads`;
+  const response = await fetch(leadEndpoint, { cache: 'no-store' });
   if (!response.ok) {
     throw new Error(`Failed to load leads: ${response.status}`);
   }
