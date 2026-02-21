@@ -459,17 +459,7 @@ details.mock-lead-bar summary::-webkit-details-marker,
   display: grid;
 }
 
-.mock-lead-bar__details {
-  display: none;
-  padding: 0.8rem 1rem 1rem;
-  border-radius: 0.9rem;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  gap: 0.75rem;
-  display: grid;
-}
-
-details.mock-lead-bar[open] .mock-lead-bar__details {
+.mock-lead-bar.is-open .mock-lead-bar__details {
   display: grid;
 }
 
