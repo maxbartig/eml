@@ -47,7 +47,7 @@ const renderLeadSummary = (lead, index) => {
             <option value="drafted"${status === 'Drafted' ? ' selected' : ''}>Drafted</option>
             <option value="approved"${status === 'Approved' ? ' selected' : ''}>Approved</option>
           </select>
-          <button type="button" class="mock-lead-bar__delete" data-delete="${lead.place_id}">Delete</button>
+          <button type="button" class="mock-lead-bar__delete" ${lead.place_id ? `data-delete="${lead.place_id}"` : 'disabled aria-hidden="true" style="visibility:hidden"'}>Delete</button>
         </div>
       </summary>
       <div class="mock-lead-bar__details">
@@ -83,13 +83,18 @@ const renderLeads = (leads) => {
     details.open = false;
   });
   container.querySelectorAll('[data-delete]').forEach((button) => {
-    button.addEventListener('click', async () => {
+    button.addEventListener('click', async (event) => {
+      event.stopPropagation();
       const id = button.getAttribute('data-delete');
+      button.setAttribute('disabled', 'disabled');
       try {
         await deleteLead(id);
-        init();
+        await init();
       } catch (error) {
         console.error('Delete failed', error);
+        alert('Unable to delete that lead.');
+      } finally {
+        button.removeAttribute('disabled');
       }
     });
   });

@@ -10,6 +10,8 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from pymongo import MongoClient
+from pymongo.collection import Collection
 from serpapi import Client
 from openai import OpenAI
 
@@ -17,24 +19,54 @@ BASE_DIR = Path(__file__).resolve().parent
 LEADS_PATH = BASE_DIR / 'ld' / 'data' / 'leads.json'
 CITY_CONTEXT = 'Wausau, Wisconsin, United States'
 EMAIL_RX = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
+MONGODB_URI = os.environ.get('MONGODB_URI')
+MONGODB_DB = os.environ.get('MONGODB_DB', 'evergreen')
+MONGODB_COLLECTION = os.environ.get('MONGODB_COLLECTION', 'leads')
 SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 SERPAPI_CLIENT = Client(api_key=SERPAPI_API_KEY) if SERPAPI_API_KEY else None
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 app = Flask(__name__)
+client_kwargs = {'tls': True} if MONGODB_URI and MONGODB_URI.startswith('mongodb+srv') else {}
+if MONGODB_URI:
+    MONGO_CLIENT = MongoClient(MONGODB_URI, **client_kwargs)
+else:
+    MONGO_CLIENT = None
+
 CORS(app, origins="https://evergreenmedialabs.com", methods=["GET", "POST", "DELETE", "OPTIONS"])
 
 
+def _get_collection() -> Optional[Collection]:
+    if not MONGO_CLIENT:
+        return None
+    return MONGO_CLIENT[MONGODB_DB][MONGODB_COLLECTION]
+
+
 def load_leads() -> List[Dict]:
-    if not LEADS_PATH.exists():
-        return []
-    return json.loads(LEADS_PATH.read_text(encoding='utf-8'))
+    coll = _get_collection()
+    if coll is None:
+        if not LEADS_PATH.exists():
+            return []
+        try:
+            content = LEADS_PATH.read_text(encoding='utf-8')
+            if not content.strip():
+                return []
+            return json.loads(content)
+        except json.JSONDecodeError:
+            return []
+    return list(coll.find({}, {'_id': False}))
 
 
 def save_leads(leads: List[Dict]) -> None:
-    LEADS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    LEADS_PATH.write_text(json.dumps(leads, ensure_ascii=False, indent=2), encoding='utf-8')
+    coll = _get_collection()
+    if coll is None:
+        LEADS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        LEADS_PATH.write_text(json.dumps(leads, ensure_ascii=False, indent=2), encoding='utf-8')
+        return
+    coll.delete_many({})
+    if leads:
+        coll.insert_many(leads)
 
 
 def serpapi_search(niche: str, start: int) -> Dict:
@@ -271,6 +303,12 @@ def get_leads() -> Tuple[str, int]:
 
 @app.route('/leads/<place_id>', methods=['DELETE'])
 def delete_lead(place_id: str) -> Tuple[str, int]:
+    coll = _get_collection()
+    if coll is not None:
+        result = coll.delete_one({'place_id': place_id})
+        if result.deleted_count == 0:
+            return jsonify({'error': 'Lead not found'}), 404
+        return jsonify({'message': 'Lead deleted', 'count': coll.count_documents({})}), 200
     leads = load_leads()
     updated = [lead for lead in leads if lead.get('place_id') != place_id]
     if len(updated) == len(leads):
