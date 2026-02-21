@@ -1,6 +1,7 @@
 const DASHBOARD_SELECTOR = '[data-lead-dashboard]';
 const container = document.querySelector(DASHBOARD_SELECTOR);
-const endpoint = container?.dataset.generateEndpoint?.replace(/\/generate$/, '') || 'https://evergreenmedialabs.com';
+const DEFAULT_ENDPOINT = 'https://eml-production-ec0f.up.railway.app';
+const endpoint = container?.dataset.generateEndpoint?.replace(/\/generate$/, '') || DEFAULT_ENDPOINT;
 const SAMPLE_LEADS = [
   {
     name: 'Revi Design',
