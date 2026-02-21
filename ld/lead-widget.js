@@ -31,16 +31,12 @@ const formatCell = (value, placeholder = '—') => escapeHtml(value || placehold
 const renderLeadSummary = (lead, index) => {
   const city = lead.city || (lead.address || '').split(',')[1]?.trim() || '—';
   const category = lead.category || lead.business_type || 'General';
-  const status = lead.status || 'Drafted';
   const email = lead.email || 'no email';
   const aboutCopy = lead.about || 'Description pending from the generator.';
   const emailBody = lead.email_body || 'Email copy is being drafted by the generator.';
-  const mapUrl = lead.google_maps_url || '';
-  const mapLink = mapUrl
-    ? `<a class="lead-row__link" href="${mapUrl}" target="_blank" rel="noreferrer">View map</a>`
-    : 'n/a';
+  const status = lead.status || 'Drafted';
   return `
-    <details class="mock-lead-bar" data-lead-index="${index}">
+    <details class="mock-lead-bar" open data-lead-index="${index}">
       <summary class="mock-lead-bar__summary">
         <span class="mock-lead-bar__text">${escapeHtml(lead.name || 'Unknown')}</span>
         <span class="mock-lead-bar__text">${escapeHtml(city)}</span>
@@ -50,7 +46,6 @@ const renderLeadSummary = (lead, index) => {
           <select class="mock-lead-bar__select">
             <option value="drafted"${status === 'Drafted' ? ' selected' : ''}>Drafted</option>
             <option value="approved"${status === 'Approved' ? ' selected' : ''}>Approved</option>
-            <option value="sent"${status === 'Sent' ? ' selected' : ''}>Sent</option>
           </select>
           <button type="button" class="mock-lead-bar__delete">Delete</button>
         </div>
@@ -64,7 +59,6 @@ const renderLeadSummary = (lead, index) => {
           <span>Email</span>
           <textarea>${escapeHtml(`Student Partnership\n\n${emailBody}`)}</textarea>
         </label>
-        <p><strong>Map:</strong> ${mapLink}</p>
       </div>
     </details>
   `;
