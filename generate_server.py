@@ -229,6 +229,8 @@ def ai_prompt(name: str, city: str, category: str, rating: str) -> str:
            - Mention building fully functioning websites that accommodate the {category} category.
            - Include a line that says if they already have a website, no worries; if interested in a new one or upgrade they can reply.
            - Ask them to email back if interested.
+           - Include the sentence "I have built hundreds of websites in the area and it is my passion. I am highly skilled."
+           - Include the sentence "I would love to start off by building you a website for free. No strings attached. If you love it, you can choose to proceed with developments."
            - No placeholders, no brackets, no "My name is".
            - Include https://evergreenmedialabs.com at the end.
         """
