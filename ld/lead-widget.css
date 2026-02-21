@@ -266,6 +266,17 @@ body {
   gap: 0.6rem;
 }
 
+.lead-dashboard__send-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.lead-dashboard__send-status {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .lead-dashboard__action {
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;

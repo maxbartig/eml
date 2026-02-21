@@ -32,7 +32,10 @@
           </div>
           <div class="lead-dashboard__actions">
             <button class="lead-dashboard__action">Polish</button>
-            <button class="lead-dashboard__action">Send</button>
+            <div class="lead-dashboard__send-group">
+              <button class="lead-dashboard__action" id="sendQueueButton">Send</button>
+              <span id="sendStatus" class="lead-dashboard__send-status" aria-live="polite"></span>
+            </div>
             <button class="lead-dashboard__action lead-dashboard__action--primary" id="openGenerate">Generate</button>
           </div>
         </header>
@@ -43,6 +46,10 @@
               <input id="search-input" type="text" placeholder="Search by name, city, or category" />
               <span>⌕</span>
             </div>
+          </div>
+          <div class="lead-dashboard__tabs">
+            <button class="lead-dashboard__tab is-active" data-lead-tab="all">All</button>
+            <button class="lead-dashboard__tab" data-lead-tab="sent">Sent</button>
           </div>
         </section>
         <section class="lead-dashboard__mock" data-lead-dashboard>

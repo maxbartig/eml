@@ -3,11 +3,15 @@
 import argparse
 import json
 import os
+import threading
 import textwrap
+import time
 from pathlib import Path
 import re
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+
 import certifi
+import requests
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -26,6 +30,11 @@ MONGODB_DB = os.environ.get('MONGODB_DB', 'evergreen')
 MONGODB_COLLECTION = os.environ.get('MONGODB_COLLECTION', 'leads')
 SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
+BREVO_SENDER_EMAIL = os.environ.get('BREVO_SENDER_EMAIL', 'hello@evergreenmedialabs.com')
+BREVO_SENDER_NAME = os.environ.get('BREVO_SENDER_NAME', 'Evergreen Media Labs')
+BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
+SEND_SLEEP_SECONDS = 90
 SERPAPI_CLIENT = Client(api_key=SERPAPI_API_KEY) if SERPAPI_API_KEY else None
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -72,6 +81,67 @@ def save_leads(leads: List[Dict]) -> None:
     coll.delete_many({})
     if leads:
         coll.insert_many(leads)
+
+
+SEND_THREAD_LOCK = threading.Lock()
+SEND_THREAD: Optional[threading.Thread] = None
+
+
+def _build_html_body(body: str) -> str:
+    escaped = (body or '').replace('\n', '<br/>')
+    return f'<p>{escaped}</p>' if escaped else ''
+
+
+def _dispatch_brevo_email(lead: Dict) -> None:
+    if not BREVO_API_KEY:
+        raise RuntimeError('BREVO_API_KEY is required to send email')
+    payload = {
+        'sender': {'name': BREVO_SENDER_NAME, 'email': BREVO_SENDER_EMAIL},
+        'to': [{'email': lead.get('email'), 'name': lead.get('name')}],
+        'subject': lead.get('email_subject') or f"Quick idea for {lead.get('name')}",
+        'htmlContent': _build_html_body(lead.get('email_body', '')),
+        'textContent': lead.get('email_body', ''),
+    }
+    headers = {'Content-Type': 'application/json', 'api-key': BREVO_API_KEY}
+    response = requests.post(BREVO_ENDPOINT, json=payload, headers=headers, timeout=60)
+    response.raise_for_status()
+
+
+def _process_send_queue() -> None:
+    global SEND_THREAD
+    try:
+        while True:
+            leads = load_leads()
+            targets = [lead for lead in leads if (lead.get('status') or 'Drafted').lower() == 'approved']
+            if not targets:
+                app.logger.info('Send queue empty, stopping worker')
+                break
+            for lead in targets:
+                try:
+                    email_address = lead.get('email')
+                    if not email_address:
+                        continue
+                    _dispatch_brevo_email(lead)
+                    lead['status'] = 'Sent'
+                    save_leads(leads)
+                except Exception as exc:
+                    app.logger.error('Failed to send to %s: %s', lead.get('name'), exc)
+                finally:
+                    time.sleep(SEND_SLEEP_SECONDS)
+    finally:
+        with SEND_THREAD_LOCK:
+            SEND_THREAD = None
+
+
+def _ensure_send_thread() -> bool:
+    global SEND_THREAD
+    with SEND_THREAD_LOCK:
+        if SEND_THREAD and SEND_THREAD.is_alive():
+            return False
+        thread = threading.Thread(target=_process_send_queue, daemon=True)
+        SEND_THREAD = thread
+        thread.start()
+        return True
 
 
 def serpapi_search(niche: str, start: int) -> Dict:
@@ -346,6 +416,16 @@ def update_status(place_id: str) -> Tuple[str, int]:
         return jsonify({'error': 'Lead not found'}), 404
     save_leads(leads)
     return jsonify({'message': 'Status updated'}), 200
+
+
+@app.route('/send', methods=['POST'])
+def trigger_send() -> Tuple[str, int]:
+    if not BREVO_API_KEY:
+        return jsonify({'error': 'BREVO_API_KEY is required to send emails'}), 400
+    started = _ensure_send_thread()
+    if started:
+        return jsonify({'message': 'Send queue started'}), 200
+    return jsonify({'message': 'Send queue already running'}), 200
 
 
 def parse_args() -> argparse.Namespace:

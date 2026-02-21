@@ -17,8 +17,16 @@ const SAMPLE_LEADS = [
 ];
 
 const searchInput = document.getElementById('search-input');
+const tabButtons = document.querySelectorAll('[data-lead-tab]');
+const sendButton = document.getElementById('sendQueueButton');
+const sendStatusEl = document.getElementById('sendStatus');
+
 let cachedLeads = [];
 let searchTerm = '';
+let activeTab = 'all';
+let tabsInitialized = false;
+let searchInitialized = false;
+let sendInitialized = false;
 
 const iconChevron = `<svg viewBox="0 0 10 6" role="presentation" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -77,14 +85,28 @@ const filterMatches = (lead) => {
   return valuesToSearch.some((value) => String(value ?? '').toLowerCase().includes(term));
 };
 
+const updateTabState = () => {
+  tabButtons.forEach((button) => {
+    const isActive = button.dataset.leadTab === activeTab;
+    button.classList.toggle('is-active', isActive);
+  });
+};
+
 const renderLeads = () => {
   if (!container) {
     return;
   }
-  const hasLiveLeads = Array.isArray(cachedLeads) && cachedLeads.length;
-  const sourceLeads = hasLiveLeads ? cachedLeads : SAMPLE_LEADS;
-  const displayLeads = sourceLeads.filter(filterMatches);
-  if (!displayLeads.length) {
+  const sourceLeads = Array.isArray(cachedLeads) && cachedLeads.length ? cachedLeads : SAMPLE_LEADS;
+  const filtered = sourceLeads.filter((lead) => {
+    if (!filterMatches(lead)) {
+      return false;
+    }
+    if (activeTab === 'sent') {
+      return (lead.status || '').toLowerCase() === 'sent';
+    }
+    return (lead.status || '').toLowerCase() !== 'sent';
+  });
+  if (!filtered.length) {
     container.innerHTML = `<p class="lead-dashboard__empty">No leads match that search term.</p>`;
     return;
   }
@@ -96,7 +118,7 @@ const renderLeads = () => {
       <span>Email</span>
       <span class="mock-lead-header__actions">Status</span>
     </div>
-    ${displayLeads.map(renderLeadSummary).join('')}
+    ${filtered.map(renderLeadSummary).join('')}
   `;
   container.querySelectorAll('details.mock-lead-bar').forEach((details) => {
     details.open = false;
@@ -133,6 +155,7 @@ const renderLeads = () => {
       }
     });
   });
+  updateTabState();
 };
 
 const deleteLead = async (id) => {
@@ -142,6 +165,63 @@ const deleteLead = async (id) => {
     throw new Error('Unable to delete lead');
   }
   return response.json();
+};
+
+const attachSearchListener = () => {
+  if (!searchInput || searchInitialized) {
+    return;
+  }
+  searchInitialized = true;
+  searchInput.addEventListener('input', (event) => {
+    searchTerm = event.target.value;
+    renderLeads();
+  });
+};
+
+const attachTabListeners = () => {
+  if (!tabButtons.length || tabsInitialized) {
+    return;
+  }
+  tabsInitialized = true;
+  tabButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      activeTab = button.dataset.leadTab || 'all';
+      renderLeads();
+    });
+  });
+  updateTabState();
+};
+
+const attachSendButton = () => {
+  if (!sendButton || sendInitialized) {
+    return;
+  }
+  sendInitialized = true;
+  sendButton.addEventListener('click', async () => {
+    sendButton.disabled = true;
+    if (sendStatusEl) {
+      sendStatusEl.textContent = 'Queueing send...';
+    }
+    try {
+      const resp = await fetch(`${endpoint}/send`, { method: 'POST' });
+      const payload = await resp.json();
+      if (!resp.ok) {
+        throw new Error(payload.error || 'Unable to queue send');
+      }
+      if (sendStatusEl) {
+        sendStatusEl.textContent = payload.message || 'Send queue started';
+      }
+      activeTab = 'sent';
+      renderLeads();
+    } catch (error) {
+      console.error('Send queue failed', error);
+      if (sendStatusEl) {
+        sendStatusEl.textContent = error.message || 'Unable to send right now';
+      }
+    } finally {
+      sendButton.disabled = false;
+    }
+  });
 };
 
 const init = async () => {
@@ -156,6 +236,9 @@ const init = async () => {
     }
     const data = await response.json();
     cachedLeads = Array.isArray(data) ? data : [];
+    attachSearchListener();
+    attachTabListeners();
+    attachSendButton();
     renderLeads();
   } catch (error) {
     console.error(error);
