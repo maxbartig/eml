@@ -17,10 +17,8 @@ const SAMPLE_LEADS = [
 ];
 
 const searchInput = document.getElementById('search-input');
-const filterButtons = document.querySelectorAll('.lead-dashboard__filter');
 let cachedLeads = [];
 let searchTerm = '';
-let activeFilter = 'All';
 
 const iconChevron = `<svg viewBox="0 0 10 6" role="presentation" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -72,41 +70,24 @@ const renderLeadSummary = (lead, index) => {
 
 const filterMatches = (lead) => {
   const term = searchTerm.trim().toLowerCase();
-  if (term) {
-    const valuesToSearch = [lead.name, lead.city, lead.address, lead.category, lead.business_type, lead.email, lead.phone];
-    const matchesSearch = valuesToSearch.some((value) => String(value ?? '').toLowerCase().includes(term));
-    if (!matchesSearch) {
-      return false;
-    }
-  }
-
-  if (activeFilter === 'All') {
+  if (!term) {
     return true;
   }
-  const statusValue = (lead.status || 'Drafted').toLowerCase();
-  if (activeFilter === 'Sent') {
-    return statusValue === 'sent';
-  }
-  return statusValue === activeFilter.toLowerCase();
-};
-
-const updateFilters = () => {
-  filterButtons.forEach((button) => {
-    button.classList.toggle('is-active', button.dataset.filter === activeFilter);
-  });
-};
-
-const filteredLeads = () => {
-  const hasLeads = Array.isArray(cachedLeads) && cachedLeads.length;
-  const sourceLeads = hasLeads ? cachedLeads : SAMPLE_LEADS;
-  return hasLeads ? sourceLeads.filter(filterMatches) : sourceLeads;
+  const valuesToSearch = [lead.name, lead.city, lead.address, lead.category, lead.business_type, lead.email, lead.phone];
+  return valuesToSearch.some((value) => String(value ?? '').toLowerCase().includes(term));
 };
 
 const renderLeads = () => {
   if (!container) {
     return;
   }
-  const displayLeads = filteredLeads();
+  const hasLiveLeads = Array.isArray(cachedLeads) && cachedLeads.length;
+  const sourceLeads = hasLiveLeads ? cachedLeads : SAMPLE_LEADS;
+  const displayLeads = sourceLeads.filter(filterMatches);
+  if (!displayLeads.length) {
+    container.innerHTML = `<p class="lead-dashboard__empty">No leads match that search term.</p>`;
+    return;
+  }
   container.innerHTML = `
     <div class="mock-lead-header">
       <span>Lead</span>
@@ -163,43 +144,19 @@ const deleteLead = async (id) => {
   return response.json();
 };
 
-const attachFilters = () => {
-  searchInput?.addEventListener('input', (event) => {
-    searchTerm = event.target.value;
-    renderLeads();
-  });
-
-  filterButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      activeFilter = button.dataset.filter || 'All';
-      updateFilters();
-      renderLeads();
-    });
-  });
-};
-
-const fetchLeads = async () => {
-  if (!container) {
-    return [];
-  }
-  const leadEndpoint = `${endpoint}/leads`;
-  const response = await fetch(leadEndpoint, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`Failed to load leads: ${response.status}`);
-  }
-  return response.json();
-};
-
 const init = async () => {
   if (!container) {
     return;
   }
   try {
-    const data = await fetchLeads();
+    const leadEndpoint = `${endpoint}/leads`;
+    const response = await fetch(leadEndpoint, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`Failed to load leads: ${response.status}`);
+    }
+    const data = await response.json();
     cachedLeads = Array.isArray(data) ? data : [];
-    updateFilters();
     renderLeads();
-    attachFilters();
   } catch (error) {
     console.error(error);
     container.innerHTML = `<p class="lead-dashboard__empty">Unable to load leads right now. Try running the generator again.</p>`;

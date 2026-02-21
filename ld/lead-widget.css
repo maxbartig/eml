@@ -287,15 +287,8 @@ body {
 
 .lead-dashboard__filters {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.lead-dashboard__filters > div {
-  flex: 1;
-  min-width: 220px;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .lead-dashboard__filters label {
@@ -314,39 +307,6 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-}
-
- .lead-dashboard__filter-buttons-group {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.lead-dashboard__filter {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.lead-dashboard__filter {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.4rem 0.9rem;
-  background: transparent;
-  color: var(--muted);
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.lead-dashboard__filter.is-active {
-  background: var(--accent-soft);
-  color: var(--text);
 }
 
 .lead-dashboard__search input {
