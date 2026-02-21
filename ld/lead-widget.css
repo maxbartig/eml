@@ -370,23 +370,6 @@ body {
   border-color: rgba(34, 197, 94, 0.5);
 }
 
-.mock-lead-header {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 2fr 1.1fr 200px;
-  gap: 1rem;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  letter-spacing: 0.2em;
-  color: var(--muted);
-  padding: 1rem 1.4rem 0.4rem;
-  margin-top: 0;
-  line-height: 1;
-}
-
-.mock-lead-header__actions {
-  justify-self: end;
-}
-
 .lead-dashboard__mock {
   background: var(--panel-soft);
   border-radius: 1rem;

@@ -178,16 +178,7 @@ const renderLeads = () => {
     return;
   }
   const isSentTab = activeTab === 'sent';
-  container.innerHTML = `
-    <div class="mock-lead-header">
-      <span>Lead</span>
-      <span>City</span>
-      <span>Category</span>
-      <span>Email</span>
-      <span class="mock-lead-header__actions">Status</span>
-    </div>
-    ${filtered.map((lead, idx) => renderLeadSummary(lead, idx, isSentTab)).join('')}
-  `;
+  container.innerHTML = filtered.map((lead, idx) => renderLeadSummary(lead, idx, isSentTab)).join('');
   container.querySelectorAll('details.mock-lead-bar').forEach((details) => {
     details.open = false;
   });
