@@ -11,6 +11,7 @@ import re
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import certifi
+import datetime
 import requests
 
 from flask import Flask, jsonify, request
@@ -112,7 +113,11 @@ def _process_send_queue() -> None:
     try:
         while True:
             leads = load_leads()
-            targets = [lead for lead in leads if (lead.get('status') or 'Drafted').lower() == 'approved']
+            targets = [
+                lead
+                for lead in leads
+                if (lead.get('status') or '').lower() == 'approved' and not lead.get('sent_at')
+            ]
             if not targets:
                 app.logger.info('Send queue empty, stopping worker')
                 break
@@ -123,11 +128,11 @@ def _process_send_queue() -> None:
                         continue
                     _dispatch_brevo_email(lead)
                     lead['status'] = 'Sent'
+                    lead['sent_at'] = datetime.datetime.utcnow().isoformat()
                     save_leads(leads)
                 except Exception as exc:
                     app.logger.error('Failed to send to %s: %s', lead.get('name'), exc)
-                finally:
-                    time.sleep(SEND_SLEEP_SECONDS)
+                time.sleep(SEND_SLEEP_SECONDS)
     finally:
         with SEND_THREAD_LOCK:
             SEND_THREAD = None
