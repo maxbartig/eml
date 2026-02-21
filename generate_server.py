@@ -269,6 +269,16 @@ def get_leads() -> Tuple[str, int]:
     return jsonify(leads), 200
 
 
+@app.route('/leads/<place_id>', methods=['DELETE'])
+def delete_lead(place_id: str) -> Tuple[str, int]:
+    leads = load_leads()
+    updated = [lead for lead in leads if lead.get('place_id') != place_id]
+    if len(updated) == len(leads):
+        return jsonify({'error': 'Lead not found'}), 404
+    save_leads(updated)
+    return jsonify({'message': 'Lead deleted', 'count': len(updated)}), 200
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Serve the Evergreen Media Labs generator.')
     parser.add_argument('--host', default='127.0.0.1', help='Host to bind .')

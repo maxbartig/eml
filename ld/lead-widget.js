@@ -47,7 +47,7 @@ const renderLeadSummary = (lead, index) => {
             <option value="drafted"${status === 'Drafted' ? ' selected' : ''}>Drafted</option>
             <option value="approved"${status === 'Approved' ? ' selected' : ''}>Approved</option>
           </select>
-          <button type="button" class="mock-lead-bar__delete">Delete</button>
+          <button type="button" class="mock-lead-bar__delete" data-delete="${lead.place_id}">Delete</button>
         </div>
       </summary>
       <div class="mock-lead-bar__details">
@@ -82,6 +82,26 @@ const renderLeads = (leads) => {
   container.querySelectorAll('details.mock-lead-bar').forEach((details) => {
     details.open = false;
   });
+  container.querySelectorAll('[data-delete]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const id = button.getAttribute('data-delete');
+      try {
+        await deleteLead(id);
+        init();
+      } catch (error) {
+        console.error('Delete failed', error);
+      }
+    });
+  });
+};
+
+const deleteLead = async (id) => {
+  const deleteEndpoint = `${endpoint}/leads/${id}`;
+  const response = await fetch(deleteEndpoint, { method: 'DELETE' });
+  if (!response.ok) {
+    throw new Error('Unable to delete lead');
+  }
+  return response.json();
 };
 
 const fetchLeads = async () => {
