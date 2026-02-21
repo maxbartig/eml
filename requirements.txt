@@ -1,4 +1,4 @@
 flask
 flask-cors
 openai
-serpapi>=2.0.0
+serpapi==0.1.5
