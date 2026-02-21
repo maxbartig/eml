@@ -88,11 +88,12 @@ const renderLeadSummary = (lead, index, isSentTab) => {
   const aboutCopy = lead.about || 'Description pending from the generator.';
   const emailBody = lead.email_body || 'Email copy is being drafted by the generator.';
   const status = lead.status || 'Drafted';
-  const deleteButton = lead.place_id
-    ? `<button type="button" class="mock-lead-bar__delete" data-delete="${lead.place_id}">Delete</button>`
-    : '<button type="button" class="mock-lead-bar__delete" disabled aria-hidden="true" style="visibility:hidden">Delete</button>';
+  const deleteButton =
+    !isSentTab && lead.place_id
+      ? `<button type="button" class="mock-lead-bar__delete" data-delete="${lead.place_id}">Delete</button>`
+      : '';
   const statusControl = isSentTab
-    ? `${renderSentStatusControls(lead)} ${deleteButton}`
+    ? `${renderSentStatusControls(lead)}`
     : `${renderStatusSelect(lead, status)} ${deleteButton}`;
 
   return `
