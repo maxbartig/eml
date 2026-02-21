@@ -156,12 +156,21 @@ body::before {
 
 .hero {
   padding: 3.4rem 4vw 3rem;
-  background: linear-gradient(160deg, rgba(8, 31, 21, 0.95), rgba(2, 7, 3, 0.95));
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
   margin: 0;
   border-radius: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, rgba(8, 31, 21, 0.95), rgba(2, 7, 3, 0.95));
+  z-index: -1;
 }
 
 .hero-note {
@@ -308,9 +317,6 @@ body::before {
 
 .rest-content {
   margin: 0;
-  background: linear-gradient(180deg, rgba(6, 40, 22, 0.98) 0%, rgba(4, 13, 8, 0.99) 45%, rgba(2, 6, 3, 0.98) 100%);
-  position: relative;
-  overflow: hidden;
   padding-bottom: 4rem;
 }
 
