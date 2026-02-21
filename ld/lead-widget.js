@@ -71,14 +71,12 @@ const renderSentStatusControls = (lead) => {
   const placeId = lead.place_id || '';
   const isDisabled = !placeId;
   const normalizedStatus = (lead.status || 'queued').toLowerCase();
-  const sentAt = formatSentTimestamp(lead.sent_at);
   return `
     <div class="mock-lead-bar__sent-wrapper">
       <select class="mock-lead-bar__select mock-lead-bar__select--sent" data-status-sent="${escapeHtml(placeId)}" ${isDisabled ? 'disabled' : ''}>
         <option value="queued"${normalizedStatus === 'queued' ? ' selected' : ''}>Queued</option>
         <option value="sent"${normalizedStatus === 'sent' ? ' selected' : ''}>Sent</option>
       </select>
-      ${sentAt ? `<span class="mock-lead-bar__sent-timestamp">Sent at ${escapeHtml(sentAt)}</span>` : ''}
     </div>
   `;
 };
