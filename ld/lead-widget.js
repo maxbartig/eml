@@ -28,86 +28,63 @@ const escapeHtml = (value) =>
 
 const formatCell = (value, placeholder = '—') => escapeHtml(value || placeholder);
 
-const renderRow = (lead, index) => {
-  const email = lead.email || '';
-  const mapUrl = lead.google_maps_url ? escapeHtml(lead.google_maps_url) : '';
+const renderLeadSummary = (lead, index) => {
+  const city = lead.city || (lead.address || '').split(',')[1]?.trim() || '—';
+  const category = lead.category || lead.business_type || 'General';
+  const status = lead.status || 'Drafted';
+  const email = lead.email || 'no email';
+  const aboutCopy = lead.about || 'Description pending from the generator.';
+  const emailBody = lead.email_body || 'Email copy is being drafted by the generator.';
+  const mapUrl = lead.google_maps_url || '';
   const mapLink = mapUrl
     ? `<a class="lead-row__link" href="${mapUrl}" target="_blank" rel="noreferrer">View map</a>`
     : 'n/a';
-  const aboutCopy = lead.about?.trim() || 'Description pending from the generator.';
   return `
-    <div class="lead-row" data-lead-index="${index}">
-      <button type="button" class="lead-row__summary">
-        <span class="lead-row__cell">${formatCell(lead.name)}</span>
-        <span class="lead-row__cell">${formatCell(lead.address)}</span>
-        <span class="lead-row__cell">${formatCell(lead.phone, 'no phone')}</span>
-        <span class="lead-row__cell">${mapLink}</span>
-        <span class="lead-row__cell">${formatCell(lead.email, 'no email')}</span>
-      </button>
-      <div class="lead-row__details">
-        <p><strong>About:</strong> ${escapeHtml(aboutCopy)}</p>
-        <p><strong>Email:</strong> <a class="lead-row__link" href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></p>
-        <p><strong>Subject line:</strong> ${escapeHtml(lead.email_subject)}</p>
-        <p><strong>Email body:</strong></p>
-        <pre><code>${escapeHtml(lead.email_body)}</code></pre>
-        <button type="button" data-copy-body="${index}">Copy body</button>
+    <details class="mock-lead-bar" data-lead-index="${index}">
+      <summary class="mock-lead-bar__summary">
+        <span class="mock-lead-bar__text">${escapeHtml(lead.name || 'Unknown')}</span>
+        <span class="mock-lead-bar__text">${escapeHtml(city)}</span>
+        <span class="mock-lead-bar__text">${escapeHtml(category)}</span>
+        <span class="mock-lead-bar__text">${escapeHtml(email)}</span>
+        <div class="mock-lead-bar__actions">
+          <select class="mock-lead-bar__select">
+            <option value="drafted"${status === 'Drafted' ? ' selected' : ''}>Drafted</option>
+            <option value="approved"${status === 'Approved' ? ' selected' : ''}>Approved</option>
+            <option value="sent"${status === 'Sent' ? ' selected' : ''}>Sent</option>
+          </select>
+          <button type="button" class="mock-lead-bar__delete">Delete</button>
+        </div>
+      </summary>
+      <div class="mock-lead-bar__details">
+        <label>
+          <span>About</span>
+          <textarea>${escapeHtml(aboutCopy)}</textarea>
+        </label>
+        <label>
+          <span>Email</span>
+          <textarea>${escapeHtml(`Student Partnership\n\n${emailBody}`)}</textarea>
+        </label>
+        <p><strong>Map:</strong> ${mapLink}</p>
       </div>
-    </div>
+    </details>
   `;
 };
-
-const renderHeader = () => `
-  <div class="lead-table__header">
-    <span>Name</span>
-    <span>Address</span>
-    <span>Phone</span>
-    <span>Map</span>
-    <span>Email</span>
-  </div>
-`;
 
 const renderLeads = (leads) => {
   if (!container) {
     return;
   }
   const displayLeads = Array.isArray(leads) && leads.length ? leads : SAMPLE_LEADS;
-  if (!displayLeads.length) {
-    container.innerHTML = '<p class="lead-dashboard__empty">No leads yet. Run the generator to fill this block.</p>';
-    return;
-  }
   container.innerHTML = `
-    <div class="lead-dashboard__table">
-      ${renderHeader()}
-      ${displayLeads.map((lead, index) => renderRow(lead, index)).join('')}
+    <div class="mock-lead-header">
+      <span>Lead</span>
+      <span>City</span>
+      <span>Category</span>
+      <span>Email</span>
+      <span class="mock-lead-header__actions">Status</span>
     </div>
+    ${displayLeads.map(renderLeadSummary).join('')}
   `;
-  container.querySelectorAll('.lead-row__summary').forEach((button) => {
-    button.addEventListener('click', () => {
-      const parent = button.closest('.lead-row');
-      if (!parent) {
-        return;
-      }
-      parent.classList.toggle('is-open');
-    });
-  });
-  container.querySelectorAll('[data-copy-body]').forEach((button) => {
-    button.addEventListener('click', async () => {
-      const index = button.getAttribute('data-copy-body');
-      const lead = displayLeads[Number(index)];
-      if (!lead) {
-        return;
-      }
-      try {
-        await navigator.clipboard.writeText(lead.email_body || '');
-        button.textContent = 'Copied!';
-        setTimeout(() => {
-          button.textContent = 'Copy body';
-        }, 2000);
-      } catch (error) {
-        console.error('Clipboard copy failed', error);
-      }
-    });
-  });
 };
 
 const fetchLeads = async () => {
