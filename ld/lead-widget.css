@@ -316,9 +316,11 @@ body {
   gap: 0.5rem;
 }
 
-.lead-dashboard__filter-buttons {
+ .lead-dashboard__filter-buttons-group {
   display: flex;
   gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .lead-dashboard__filter {
@@ -329,6 +331,17 @@ body {
   color: var(--muted);
   font-weight: 600;
   cursor: pointer;
+}
+
+.lead-dashboard__filter {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .lead-dashboard__filter.is-active {
