@@ -236,7 +236,7 @@ body {
 }
 
 .lead-dashboard {
-  width: min(1200px, 100%);
+  width: min(1360px, calc(100% - 3rem));
   padding: 2.5rem;
   background: var(--panel);
   border-radius: 2rem;
