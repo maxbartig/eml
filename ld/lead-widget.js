@@ -1,6 +1,19 @@
 const DASHBOARD_SELECTOR = '[data-lead-dashboard]';
 const container = document.querySelector(DASHBOARD_SELECTOR);
 const endpoint = container?.dataset.generateEndpoint?.replace(/\/generate$/, '') || 'https://evergreenmedialabs.com';
+const SAMPLE_LEADS = [
+  {
+    name: 'Revi Design',
+    address: 'Wausau, WI',
+    phone: '(715) 555-0101',
+    google_maps_url: 'https://www.google.com/maps',
+    email: 'dave@revi-design.com',
+    about: 'Lawn care and landscaping specialists serving the Wausau area, focused on clean designs and reliable service.',
+    email_subject: 'Quick idea for Revi Design',
+    email_body:
+      'Hello,\n\nI am a student at D.C. Everest Senior High in 12th grade that is planning on going to school for business and computer science. I currently run a small business named Evergreen Media Labs, a website creation agency, and I came across your business, Revi Design, on Google and noticed your dedication to creating beautiful yards. If I am mistaken and you do have a website, maybe you are interested in a refreshed or upgraded presence. I have attached some of my work to this email.\n\nThank you,\nOwner of Evergreen Media Labs',
+  },
+];
 
 const iconChevron = `<svg viewBox="0 0 10 6" role="presentation" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -56,14 +69,15 @@ const renderLeads = (leads) => {
   if (!container) {
     return;
   }
-  if (!Array.isArray(leads) || leads.length === 0) {
+  const displayLeads = Array.isArray(leads) && leads.length ? leads : SAMPLE_LEADS;
+  if (!displayLeads.length) {
     container.innerHTML = '<p class="lead-dashboard__empty">No leads yet. Run the generator to fill this block.</p>';
     return;
   }
   container.innerHTML = `
     <div class="lead-dashboard__table">
       ${renderHeader()}
-      ${leads.map((lead, index) => renderRow(lead, index)).join('')}
+      ${displayLeads.map((lead, index) => renderRow(lead, index)).join('')}
     </div>
   `;
   container.querySelectorAll('.lead-row__summary').forEach((button) => {
@@ -78,7 +92,7 @@ const renderLeads = (leads) => {
   container.querySelectorAll('[data-copy-body]').forEach((button) => {
     button.addEventListener('click', async () => {
       const index = button.getAttribute('data-copy-body');
-      const lead = leads[Number(index)];
+      const lead = displayLeads[Number(index)];
       if (!lead) {
         return;
       }
