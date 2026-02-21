@@ -23,7 +23,7 @@ SERPAPI_CLIENT = Client(api_key=SERPAPI_API_KEY) if SERPAPI_API_KEY else None
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 app = Flask(__name__)
-CORS(app, origins="https://evergreenmedialabs.com")
+CORS(app, origins="https://evergreenmedialabs.com", methods=["GET", "POST", "DELETE", "OPTIONS"])
 
 
 def load_leads() -> List[Dict]:
