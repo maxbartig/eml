@@ -378,7 +378,7 @@ body {
   font-size: 0.75rem;
   letter-spacing: 0.2em;
   color: var(--muted);
-  padding: 0 0.5rem 0.4rem 0.5rem;
+  padding: 1rem 1.4rem 0.4rem;
   margin-top: 0;
   line-height: 1;
 }
