@@ -5,6 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Wausau Lead Dashboard</title>
     <link rel="stylesheet" href="lead-widget.css" />
+    <style>
+      .generate-progress-overlay {
+        background: rgba(3, 8, 18, 0.58) !important;
+        backdrop-filter: blur(10px) saturate(120%) !important;
+      }
+      .generate-progress-card {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(10, 18, 34, 0.98)) !important;
+        color: #e2e8f0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 30px 90px rgba(8, 15, 28, 0.55) !important;
+      }
+      .generate-progress-card__percent {
+        color: #e2e8f0 !important;
+      }
+      .generate-progress-card__track {
+        background: rgba(148, 163, 184, 0.16) !important;
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      }
+      .generate-progress-card__fill {
+        background: linear-gradient(90deg, #16a34a, #22c55e) !important;
+      }
+      .generate-progress-card__count {
+        color: #dbe7fb !important;
+      }
+      .generate-progress-card__label {
+        color: #94a3b8 !important;
+      }
+      .generate-progress-card__close {
+        background: rgba(34, 197, 94, 0.14) !important;
+        border-color: rgba(34, 197, 94, 0.5) !important;
+        color: #d4ffe1 !important;
+      }
+      .generate-progress-card__close:hover {
+        background: rgba(34, 197, 94, 0.22) !important;
+      }
+      .generate-progress-card.is-error .generate-progress-card__fill {
+        background: linear-gradient(90deg, #ef4444, #f87171) !important;
+      }
+      .generate-progress-card.is-error .generate-progress-card__close {
+        border-color: rgba(248, 113, 113, 0.4) !important;
+        background: rgba(248, 113, 113, 0.12) !important;
+        color: #fecaca !important;
+      }
+    </style>
   </head>
   <body>
     <div class="auth-overlay" id="authOverlay" aria-modal="true" role="dialog">
