@@ -197,6 +197,73 @@ body.auth-locked .lead-dashboard {
   visibility: hidden;
   pointer-events: none;
 }
+
+.generate-progress-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1350;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 20, 36, 0.35);
+  backdrop-filter: blur(8px);
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.generate-progress-overlay.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.generate-progress-card {
+  width: min(620px, calc(100vw - 2rem));
+  background: rgba(241, 245, 249, 0.96);
+  color: #334155;
+  border-radius: 1.15rem;
+  box-shadow: 0 30px 90px rgba(8, 15, 28, 0.35);
+  padding: 2rem 2.25rem 1.65rem;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.generate-progress-card__percent {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.02em;
+}
+
+.generate-progress-card__track {
+  height: 12px;
+  width: 100%;
+  margin: 1.1rem 0 0.85rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.24);
+  overflow: hidden;
+}
+
+.generate-progress-card__fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #64748b, #94a3b8);
+  transition: width 0.35s ease;
+}
+
+.generate-progress-card__count {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.generate-progress-card__label {
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
+  color: #64748b;
+}
 .auth-overlay__submit {
   margin-top: 0.5rem;
   border: none;

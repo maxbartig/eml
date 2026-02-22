@@ -99,6 +99,32 @@ def _queue_approved_leads_for_sending() -> int:
 
 SEND_THREAD_LOCK = threading.Lock()
 SEND_THREAD: Optional[threading.Thread] = None
+GENERATION_PROGRESS_LOCK = threading.Lock()
+GENERATION_PROGRESS: Dict[str, object] = {
+    'active': False,
+    'current': 0,
+    'total': 0,
+    'message': 'Idle',
+    'error': None,
+    'updated_at': None,
+}
+
+
+def _set_generation_progress(**updates: object) -> None:
+    with GENERATION_PROGRESS_LOCK:
+        GENERATION_PROGRESS.update(updates)
+        GENERATION_PROGRESS['updated_at'] = datetime.datetime.utcnow().isoformat()
+
+
+def _increment_generation_progress() -> None:
+    with GENERATION_PROGRESS_LOCK:
+        GENERATION_PROGRESS['current'] = int(GENERATION_PROGRESS.get('current') or 0) + 1
+        GENERATION_PROGRESS['updated_at'] = datetime.datetime.utcnow().isoformat()
+
+
+def _get_generation_progress() -> Dict[str, object]:
+    with GENERATION_PROGRESS_LOCK:
+        return dict(GENERATION_PROGRESS)
 
 
 def _build_html_body(body: str) -> str:
@@ -358,6 +384,7 @@ def build_payload(instructions: Sequence[Dict[str, int]], existing_names: set) -
                 )
                 existing_names.add(name.lower())
                 collected += 1
+                _increment_generation_progress()
                 if collected >= count:
                     break
             start += 20
@@ -383,12 +410,31 @@ def generate_leads() -> Tuple[str, int]:
     leads = load_leads()
     names = {lead.get('name', '').lower() for lead in leads}
     total_requested = sum(count for _, count in instructions)
-    generated = build_payload(instructions, names)
+    _set_generation_progress(
+        active=True,
+        current=0,
+        total=total_requested,
+        message='Generating leads',
+        error=None,
+    )
+    try:
+        generated = build_payload(instructions, names)
+    except Exception as exc:
+        _set_generation_progress(active=False, message='Generation failed', error=str(exc))
+        raise
     if not generated:
+        _set_generation_progress(active=False, message='No new leads were generated')
         return jsonify({'message': 'No new leads were generated', 'requested': total_requested, 'generated': 0}), 200
 
     leads.extend(generated)
     save_leads(leads)
+    _set_generation_progress(
+        active=False,
+        current=len(generated),
+        total=total_requested,
+        message='Generated leads',
+        error=None,
+    )
     return (
         jsonify(
             {
@@ -400,6 +446,11 @@ def generate_leads() -> Tuple[str, int]:
         ),
         200,
     )
+
+
+@app.route('/generate/progress', methods=['GET'])
+def get_generate_progress() -> Tuple[str, int]:
+    return jsonify(_get_generation_progress()), 200
 
 
 @app.route('/leads', methods=['GET'])

@@ -79,6 +79,16 @@
         </form>
       </div>
     </div>
+    <div class="generate-progress-overlay is-hidden" id="generateProgressOverlay" aria-hidden="true">
+      <div class="generate-progress-card" role="status" aria-live="polite">
+        <p class="generate-progress-card__percent" id="generateProgressPercent">0%</p>
+        <div class="generate-progress-card__track" aria-hidden="true">
+          <div class="generate-progress-card__fill" id="generateProgressFill"></div>
+        </div>
+        <p class="generate-progress-card__count" id="generateProgressCount">0 / 0 leads</p>
+        <p class="generate-progress-card__label" id="generateProgressLabel">Waiting to start...</p>
+      </div>
+    </div>
     <script src="lead-widget.js"></script>
     <script>
       (function () {
@@ -135,7 +145,15 @@
         const result = document.getElementById("generateResult");
         const endpointDisplay = document.getElementById("generateEndpointDisplay");
         const dashboard = document.querySelector(".lead-dashboard");
+        const progressOverlay = document.getElementById("generateProgressOverlay");
+        const progressPercent = document.getElementById("generateProgressPercent");
+        const progressFill = document.getElementById("generateProgressFill");
+        const progressCount = document.getElementById("generateProgressCount");
+        const progressLabel = document.getElementById("generateProgressLabel");
         const AUTH_STORAGE = "lead-dashboard-auth";
+        let progressPollInterval = null;
+        let progressFallbackInterval = null;
+        let progressFallbackCurrent = 0;
 
         const show = () => {
           overlay?.classList.remove("is-hidden");
@@ -196,9 +214,71 @@
             .filter((entry) => entry.niche && entry.count > 0);
         };
 
+        const getTotalRequested = (payload) =>
+          payload.reduce((sum, entry) => sum + Number(entry.count || 0), 0);
+
         const setStatus = (message, isError = false) => {
           result.textContent = message;
           result.style.color = isError ? "#f87171" : "#d4ffdf";
+        };
+
+        const updateProgressUI = (current, total, label) => {
+          const safeTotal = Math.max(Number(total) || 0, 0);
+          const safeCurrent = Math.max(0, Math.min(Number(current) || 0, safeTotal || Number(current) || 0));
+          const percent = safeTotal > 0 ? Math.round((safeCurrent / safeTotal) * 100) : 0;
+          if (progressPercent) {
+            progressPercent.textContent = `${percent}%`;
+          }
+          if (progressFill) {
+            progressFill.style.width = `${Math.max(0, Math.min(percent, 100))}%`;
+          }
+          if (progressCount) {
+            progressCount.textContent = `${safeCurrent} / ${safeTotal} leads`;
+          }
+          if (progressLabel) {
+            progressLabel.textContent = label || "Generating leads...";
+          }
+        };
+
+        const stopProgressTracking = () => {
+          if (progressPollInterval) {
+            clearInterval(progressPollInterval);
+            progressPollInterval = null;
+          }
+          if (progressFallbackInterval) {
+            clearInterval(progressFallbackInterval);
+            progressFallbackInterval = null;
+          }
+        };
+
+        const showProgress = (total) => {
+          progressFallbackCurrent = 0;
+          updateProgressUI(0, total, "Starting generation...");
+          progressOverlay?.classList.remove("is-hidden");
+          progressOverlay?.setAttribute("aria-hidden", "false");
+        };
+
+        const hideProgress = () => {
+          stopProgressTracking();
+          progressOverlay?.classList.add("is-hidden");
+          progressOverlay?.setAttribute("aria-hidden", "true");
+        };
+
+        const startFallbackProgress = (total) => {
+          if (!total || total <= 0) {
+            return;
+          }
+          if (progressFallbackInterval) {
+            clearInterval(progressFallbackInterval);
+          }
+          progressFallbackInterval = setInterval(() => {
+            const cap = Math.max(total - 1, 0);
+            if (progressFallbackCurrent >= cap) {
+              return;
+            }
+            progressFallbackCurrent += 1;
+            updateProgressUI(progressFallbackCurrent, total, "Generating leads...");
+          }, 1200);
         };
 
         const setLoading = (isLoading) => {
@@ -215,6 +295,7 @@
 
         const generateFormSubmit = form?.querySelector(".generate-overlay__submit");
         const endpoint = dashboard?.dataset.generateEndpoint || "https://evergreenmedialabs.com/generate";
+        const progressEndpoint = endpoint.replace(/\/generate$/, "/generate/progress");
 
         if (endpointDisplay) {
           endpointDisplay.textContent = endpoint;
@@ -227,7 +308,26 @@
             setStatus("Give me at least one niche with a quantity.", true);
             return;
           }
+          const totalRequested = getTotalRequested(payload);
           setLoading(true);
+          showProgress(totalRequested);
+          stopProgressTracking();
+          progressPollInterval = setInterval(async () => {
+            try {
+              const progressResponse = await fetch(progressEndpoint, { cache: "no-store" });
+              if (!progressResponse.ok) {
+                return;
+              }
+              const progress = await progressResponse.json();
+              const total = Number(progress?.total || totalRequested);
+              const current = Number(progress?.current || 0);
+              const label = progress?.message || "Generating leads...";
+              updateProgressUI(current, total || totalRequested, label);
+            } catch (pollError) {
+              // Keep the popup alive with a local estimate if progress polling is unavailable.
+            }
+          }, 1000);
+          startFallbackProgress(totalRequested);
           try {
             const response = await fetch(endpoint, {
               method: "POST",
@@ -246,15 +346,21 @@
             if (!response.ok) {
               throw new Error(data?.error || "Generation failed");
             }
+            const finalTotal = Number(data?.requested || totalRequested);
+            const finalCurrent = Number(data?.generated ?? data?.count ?? finalTotal);
+            updateProgressUI(finalCurrent, finalTotal, data?.message || "Generated leads");
             setStatus(data?.message || "Queued search. Refresh the page after completion.");
+            setTimeout(hideProgress, 900);
           } catch (error) {
             console.error(error);
+            hideProgress();
             const message = error.message?.includes("Failed to fetch")
               ? "Unable to reach the generator. Double-check the network/Flask service."
               : error.message;
             setStatus(message || "Something went wrong.", true);
           } finally {
             setLoading(false);
+            stopProgressTracking();
           }
         });
       })();
