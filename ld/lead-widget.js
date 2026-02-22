@@ -28,6 +28,7 @@ let activeTab = 'all';
 let tabsInitialized = false;
 let searchInitialized = false;
 let sendInitialized = false;
+let reloadInitialized = false;
 let refreshInProgress = false;
 let sendStatusPoll = null;
 
@@ -331,6 +332,16 @@ const attachSendButton = () => {
   });
 };
 
+const attachReloadButton = () => {
+  if (!reloadButton || reloadInitialized) {
+    return;
+  }
+  reloadInitialized = true;
+  reloadButton.addEventListener('click', () => {
+    window.location.reload();
+  });
+};
+
 const init = async () => {
   if (!container) {
     return;
@@ -354,6 +365,7 @@ const bootstrap = () => {
   attachSearchListener();
   attachTabListeners();
   attachSendButton();
+  attachReloadButton();
   init();
 };
 
