@@ -81,12 +81,21 @@
     </div>
     <div class="generate-progress-overlay is-hidden" id="generateProgressOverlay" aria-hidden="true">
       <div class="generate-progress-card" role="status" aria-live="polite">
+        <div class="generate-progress-card__check" id="generateProgressCheck" aria-hidden="true">
+          <svg viewBox="0 0 52 52" role="presentation">
+            <circle cx="26" cy="26" r="22"></circle>
+            <path d="M16 27.5l7 7L37 20.5"></path>
+          </svg>
+        </div>
         <p class="generate-progress-card__percent" id="generateProgressPercent">0%</p>
         <div class="generate-progress-card__track" aria-hidden="true">
           <div class="generate-progress-card__fill" id="generateProgressFill"></div>
         </div>
         <p class="generate-progress-card__count" id="generateProgressCount">0 / 0 leads</p>
         <p class="generate-progress-card__label" id="generateProgressLabel">Waiting to start...</p>
+        <button type="button" class="generate-progress-card__close is-hidden" id="generateProgressClose">
+          Close and refresh
+        </button>
       </div>
     </div>
     <script src="lead-widget.js"></script>
@@ -146,10 +155,13 @@
         const endpointDisplay = document.getElementById("generateEndpointDisplay");
         const dashboard = document.querySelector(".lead-dashboard");
         const progressOverlay = document.getElementById("generateProgressOverlay");
+        const progressCard = progressOverlay?.querySelector(".generate-progress-card");
         const progressPercent = document.getElementById("generateProgressPercent");
         const progressFill = document.getElementById("generateProgressFill");
         const progressCount = document.getElementById("generateProgressCount");
         const progressLabel = document.getElementById("generateProgressLabel");
+        const progressCheck = document.getElementById("generateProgressCheck");
+        const progressClose = document.getElementById("generateProgressClose");
         const AUTH_STORAGE = "lead-dashboard-auth";
         let progressPollInterval = null;
         let progressFallbackInterval = null;
@@ -253,15 +265,37 @@
 
         const showProgress = (total) => {
           progressFallbackCurrent = 0;
+          progressCard?.classList.remove("is-complete", "is-error");
+          progressCheck?.classList.remove("is-visible");
+          progressClose?.classList.add("is-hidden");
           updateProgressUI(0, total, "Starting generation...");
+          overlay?.classList.add("is-hidden");
           progressOverlay?.classList.remove("is-hidden");
           progressOverlay?.setAttribute("aria-hidden", "false");
+          document.body.classList.add("auth-locked");
         };
 
         const hideProgress = () => {
           stopProgressTracking();
           progressOverlay?.classList.add("is-hidden");
           progressOverlay?.setAttribute("aria-hidden", "true");
+          if (sessionStorage.getItem(AUTH_STORAGE) === "true") {
+            document.body.classList.remove("auth-locked");
+          }
+        };
+
+        const showProgressCompletion = (message, isError = false) => {
+          stopProgressTracking();
+          if (progressLabel) {
+            progressLabel.textContent = message;
+          }
+          progressCard?.classList.toggle("is-complete", !isError);
+          progressCard?.classList.toggle("is-error", isError);
+          progressCheck?.classList.toggle("is-visible", !isError);
+          if (progressClose) {
+            progressClose.textContent = isError ? "Close" : "Close and refresh";
+            progressClose.classList.remove("is-hidden");
+          }
         };
 
         const startFallbackProgress = (total) => {
@@ -300,6 +334,14 @@
         if (endpointDisplay) {
           endpointDisplay.textContent = endpoint;
         }
+
+        progressClose?.addEventListener("click", () => {
+          if (progressCard?.classList.contains("is-complete")) {
+            window.location.reload();
+            return;
+          }
+          hideProgress();
+        });
 
         form?.addEventListener("submit", async (event) => {
           event.preventDefault();
@@ -349,15 +391,15 @@
             const finalTotal = Number(data?.requested || totalRequested);
             const finalCurrent = Number(data?.generated ?? data?.count ?? finalTotal);
             updateProgressUI(finalCurrent, finalTotal, data?.message || "Generated leads");
-            setStatus(data?.message || "Queued search. Refresh the page after completion.");
-            setTimeout(hideProgress, 900);
+            setStatus("Generated leads. Click close to refresh and view them.");
+            showProgressCompletion("Generated leads");
           } catch (error) {
             console.error(error);
-            hideProgress();
             const message = error.message?.includes("Failed to fetch")
               ? "Unable to reach the generator. Double-check the network/Flask service."
               : error.message;
             setStatus(message || "Something went wrong.", true);
+            showProgressCompletion(message || "Generation failed", true);
           } finally {
             setLoading(false);
             stopProgressTracking();
