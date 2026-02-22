@@ -33,6 +33,7 @@ let reloadInitialized = false;
 let refreshInProgress = false;
 let sendStatusPoll = null;
 let generatorProgressCache = null;
+const CHICAGO_TIMEZONE = 'America/Chicago';
 
 const OVERVIEW_RANGES = {
   '24h': { label: '24h', ms: 24 * 60 * 60 * 1000 },
@@ -62,8 +63,18 @@ const formatSentTimestamp = (value) => {
   if (Number.isNaN(parsed.valueOf())) {
     return null;
   }
-  return parsed.toLocaleString();
+  return parsed.toLocaleString([], { timeZone: CHICAGO_TIMEZONE });
 };
+
+const formatChicagoDateTime = (value) => {
+  if (!value) {
+    return 'N/A';
+  }
+  return value.toLocaleString([], { timeZone: CHICAGO_TIMEZONE });
+};
+
+const formatChicagoTime = (value) =>
+  value.toLocaleTimeString([], { timeZone: CHICAGO_TIMEZONE, hour: 'numeric', minute: '2-digit' });
 
 const parseTimestamp = (value) => {
   if (!value) {
@@ -177,9 +188,9 @@ const buildTrendBuckets = (leads, type) => {
     const labelDate = bucket.start;
     let label = `${labelDate.getMonth() + 1}/${labelDate.getDate()}`;
     if (overviewRange === '24h') {
-      label = labelDate.toLocaleTimeString([], { hour: 'numeric' });
+      label = labelDate.toLocaleTimeString([], { timeZone: CHICAGO_TIMEZONE, hour: 'numeric' });
     } else if (overviewRange === '1y') {
-      label = labelDate.toLocaleDateString([], { month: 'short' });
+      label = labelDate.toLocaleDateString([], { timeZone: CHICAGO_TIMEZONE, month: 'short' });
     }
     return { label, count: bucket.count };
   });
@@ -313,7 +324,7 @@ const renderOverview = (allLeads) => {
       <div class="overview-topbar">
         <div class="overview-topbar__filters">${filterButtons}</div>
         <div class="overview-topbar__meta">
-          <span>Last updated: ${escapeHtml(new Date().toLocaleTimeString())}</span>
+          <span>Last updated: ${escapeHtml(formatChicagoTime(new Date()))} (Chicago)</span>
         </div>
       </div>
 
@@ -354,8 +365,8 @@ const renderOverview = (allLeads) => {
             <div class="overview-list__row"><span>Generator</span><strong>${escapeHtml(generatorActive ? 'Active' : 'Idle')}</strong></div>
             <div class="overview-list__row"><span>Generator progress</span><strong>${escapeHtml(generatorProgressText)}</strong></div>
             <div class="overview-list__row"><span>Send queue</span><strong>${escapeHtml(stats.queuedNow > 0 ? 'Queued' : 'Idle')}</strong></div>
-            <div class="overview-list__row"><span>Last generated</span><strong>${escapeHtml(stats.lastGeneratedAt ? stats.lastGeneratedAt.toLocaleString() : 'N/A')}</strong></div>
-            <div class="overview-list__row"><span>Last email sent</span><strong>${escapeHtml(stats.lastSentAt ? stats.lastSentAt.toLocaleString() : 'N/A')}</strong></div>
+            <div class="overview-list__row"><span>Last generated</span><strong>${escapeHtml(formatChicagoDateTime(stats.lastGeneratedAt))}</strong></div>
+            <div class="overview-list__row"><span>Last email sent</span><strong>${escapeHtml(formatChicagoDateTime(stats.lastSentAt))}</strong></div>
           </div>
         </section>
       </section>
