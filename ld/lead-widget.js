@@ -141,6 +141,7 @@ const updateTabState = () => {
   tabButtons.forEach((button) => {
     const isActive = button.dataset.leadTab === activeTab;
     button.classList.toggle('is-active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
 };
 
