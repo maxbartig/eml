@@ -6,6 +6,7 @@ import os
 import threading
 import textwrap
 import time
+import uuid
 from pathlib import Path
 import re
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
@@ -417,6 +418,8 @@ def generate_leads() -> Tuple[str, int]:
         message='Generating leads',
         error=None,
     )
+    run_started = time.time()
+    run_id = f"gen_{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
     try:
         generated = build_payload(instructions, names)
     except Exception as exc:
@@ -425,6 +428,17 @@ def generate_leads() -> Tuple[str, int]:
     if not generated:
         _set_generation_progress(active=False, message='No new leads were generated')
         return jsonify({'message': 'No new leads were generated', 'requested': total_requested, 'generated': 0}), 200
+
+    elapsed_seconds = max(0.0, time.time() - run_started)
+    per_lead_seconds = elapsed_seconds / len(generated) if generated else 0.0
+    generated_at = datetime.datetime.utcnow().isoformat()
+    for lead in generated:
+        lead['generated_at'] = generated_at
+        lead['generation_run_id'] = run_id
+        lead['generation_requested_count'] = total_requested
+        lead['generation_generated_count'] = len(generated)
+        lead['generation_elapsed_seconds'] = round(elapsed_seconds, 3)
+        lead['generation_seconds_per_lead'] = round(per_lead_seconds, 3)
 
     leads.extend(generated)
     save_leads(leads)
