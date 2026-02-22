@@ -81,12 +81,6 @@
     </div>
     <div class="generate-progress-overlay is-hidden" id="generateProgressOverlay" aria-hidden="true">
       <div class="generate-progress-card" role="status" aria-live="polite">
-        <div class="generate-progress-card__check" id="generateProgressCheck" aria-hidden="true">
-          <svg viewBox="0 0 52 52" role="presentation">
-            <circle cx="26" cy="26" r="22"></circle>
-            <path d="M16 27.5l7 7L37 20.5"></path>
-          </svg>
-        </div>
         <p class="generate-progress-card__percent" id="generateProgressPercent">0%</p>
         <div class="generate-progress-card__track" aria-hidden="true">
           <div class="generate-progress-card__fill" id="generateProgressFill"></div>
@@ -160,7 +154,6 @@
         const progressFill = document.getElementById("generateProgressFill");
         const progressCount = document.getElementById("generateProgressCount");
         const progressLabel = document.getElementById("generateProgressLabel");
-        const progressCheck = document.getElementById("generateProgressCheck");
         const progressClose = document.getElementById("generateProgressClose");
         const AUTH_STORAGE = "lead-dashboard-auth";
         let progressPollInterval = null;
@@ -266,7 +259,6 @@
         const showProgress = (total) => {
           progressFallbackCurrent = 0;
           progressCard?.classList.remove("is-complete", "is-error");
-          progressCheck?.classList.remove("is-visible");
           progressClose?.classList.add("is-hidden");
           updateProgressUI(0, total, "Starting generation...");
           overlay?.classList.add("is-hidden");
@@ -291,7 +283,6 @@
           }
           progressCard?.classList.toggle("is-complete", !isError);
           progressCard?.classList.toggle("is-error", isError);
-          progressCheck?.classList.toggle("is-visible", !isError);
           if (progressClose) {
             progressClose.textContent = isError ? "Close" : "Close and refresh";
             progressClose.classList.remove("is-hidden");
