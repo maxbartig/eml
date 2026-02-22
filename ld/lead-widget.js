@@ -29,7 +29,7 @@ let tabsInitialized = false;
 let searchInitialized = false;
 let sendInitialized = false;
 let refreshInProgress = false;
-let pendingAutoRefresh = null;
+let sendStatusPoll = null;
 
 const iconChevron = `<svg viewBox="0 0 10 6" role="presentation" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -79,6 +79,15 @@ const renderSentStatusControls = (lead) => {
       </select>
     </div>
   `;
+};
+
+const queueAllLeads = () => {
+  cachedLeads = cachedLeads.map((lead) => {
+    if ((lead.status || '').toLowerCase() === 'sent') {
+      return lead;
+    }
+    return { ...lead, status: 'Queued' };
+  });
 };
 
 const renderLeadSummary = (lead, index, isSentTab) => {
@@ -244,14 +253,22 @@ const deleteLead = async (id) => {
   return response.json();
 };
 
-const scheduleRefresh = () => {
-  if (pendingAutoRefresh) {
-    clearTimeout(pendingAutoRefresh);
+const clearSendStatusPolling = () => {
+  if (sendStatusPoll) {
+    clearInterval(sendStatusPoll);
+    sendStatusPoll = null;
   }
-  pendingAutoRefresh = setTimeout(() => {
-    refreshLeads();
-    pendingAutoRefresh = null;
-  }, 1500);
+};
+
+const startSendStatusPolling = () => {
+  clearSendStatusPolling();
+  sendStatusPoll = setInterval(async () => {
+    await refreshLeads();
+    const stillQueued = cachedLeads.some((lead) => SENT_TAB_STATUSES.includes((lead.status || '').toLowerCase()));
+    if (!stillQueued) {
+      clearSendStatusPolling();
+    }
+  }, 2800);
 };
 
 const attachSearchListener = () => {
@@ -299,7 +316,9 @@ const attachSendButton = () => {
         sendStatusEl.textContent = payload.message || 'Send queue started';
       }
       activeTab = 'sent';
+      queueAllLeads();
       renderLeads();
+      startSendStatusPolling();
     } catch (error) {
       console.error('Send queue failed', error);
       if (sendStatusEl) {
