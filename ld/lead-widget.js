@@ -24,7 +24,7 @@ const reloadButton = document.getElementById('reloadLeadsButton');
 
 let cachedLeads = [];
 let searchTerm = '';
-let activeTab = 'all';
+let activeTab = 'dashboard';
 let overviewRange = '7d';
 let tabsInitialized = false;
 let searchInitialized = false;
@@ -56,11 +56,8 @@ const escapeHtml = (value) =>
 const formatCell = (value, placeholder = '—') => escapeHtml(value || placeholder);
 
 const formatSentTimestamp = (value) => {
-  if (!value) {
-    return null;
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.valueOf())) {
+  const parsed = parseTimestamp(value);
+  if (!parsed) {
     return null;
   }
   return parsed.toLocaleString([], { timeZone: CHICAGO_TIMEZONE });
@@ -80,7 +77,9 @@ const parseTimestamp = (value) => {
   if (!value) {
     return null;
   }
-  const parsed = new Date(value);
+  const stringValue = String(value).trim();
+  const isoWithoutTimezone = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(stringValue);
+  const parsed = new Date(isoWithoutTimezone ? `${stringValue}Z` : stringValue);
   return Number.isNaN(parsed.valueOf()) ? null : parsed;
 };
 
