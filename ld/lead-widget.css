@@ -88,13 +88,27 @@ body.auth-locked .lead-dashboard {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(2, 6, 18, 0.92);
+  background: transparent;
   z-index: 1300;
   transition: opacity 0.2s ease, visibility 0.2s ease;
-  backdrop-filter: blur(10px) saturate(120%);
+  overflow: hidden;
+}
+
+.generate-overlay::before {
+  content: "";
+  position: absolute;
+  width: min(1088px, calc(100vw - 3rem));
+  height: min(80vh, 820px);
+  border-radius: 2rem;
+  background: rgba(2, 6, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  box-shadow: 0 28px 90px rgba(2, 7, 18, 0.45);
+  backdrop-filter: blur(12px) saturate(120%);
 }
 
 .generate-overlay__panel {
+  position: relative;
+  z-index: 1;
   background: var(--panel);
   border-radius: 1rem;
   padding: 2.5rem;
@@ -114,7 +128,7 @@ body.auth-locked .lead-dashboard {
 .generate-overlay__close {
   border: none;
   background: transparent;
-  color: #f97316;
+  color: #ef4444;
   font-size: 1.5rem;
   cursor: pointer;
 }
@@ -157,7 +171,7 @@ body.auth-locked .lead-dashboard {
 
 .generate-row__remove {
   border: none;
-  background: rgba(249, 115, 22, 0.9);
+  background: rgba(239, 68, 68, 0.92);
   border-radius: 50%;
   color: #fff;
   width: 28px;
