@@ -20,6 +20,7 @@ const searchInput = document.getElementById('search-input');
 const tabButtons = document.querySelectorAll('[data-lead-tab]');
 const sendButton = document.getElementById('sendQueueButton');
 const sendStatusEl = document.getElementById('sendStatus');
+const exportSentButton = document.getElementById('exportSentButton');
 const reloadButton = document.getElementById('reloadLeadsButton');
 
 let cachedLeads = [];
@@ -29,6 +30,7 @@ let overviewRange = '7d';
 let tabsInitialized = false;
 let searchInitialized = false;
 let sendInitialized = false;
+let exportInitialized = false;
 let reloadInitialized = false;
 let refreshInProgress = false;
 let sendStatusPoll = null;
@@ -134,6 +136,52 @@ const inOverviewRange = (dateValue) => {
 const getGeneratedTimestamp = (lead) => lead.generated_at || lead.queued_at || lead.sent_at || null;
 
 const getStatusKey = (lead) => String(lead.status || 'Drafted').toLowerCase();
+
+const deriveLeadCity = (lead) => lead.city || (lead.address || '').split(',')[1]?.trim() || '';
+
+const csvEscape = (value) => {
+  const stringValue = String(value ?? '');
+  return `"${stringValue.replace(/"/g, '""')}"`;
+};
+
+const buildSentCsv = (leads) => {
+  const rows = [
+    [
+      'generated on',
+      'name of business',
+      'city',
+      'email',
+      'description',
+      'email message',
+    ],
+  ];
+
+  leads.forEach((lead) => {
+    const generatedAt = parseTimestamp(getGeneratedTimestamp(lead));
+    rows.push([
+      generatedAt ? formatChicagoDateTime(generatedAt) : '',
+      lead.name || '',
+      deriveLeadCity(lead),
+      lead.email || '',
+      lead.about || '',
+      lead.email_body || '',
+    ]);
+  });
+
+  return rows.map((row) => row.map(csvEscape).join(',')).join('\r\n');
+};
+
+const downloadCsv = (filename, csvContent) => {
+  const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
 
 const buildTrendBuckets = (leads, type) => {
   const rangeStart = getRangeStart();
@@ -681,6 +729,39 @@ const attachReloadButton = () => {
   });
 };
 
+const attachExportButton = () => {
+  if (!exportSentButton || exportInitialized) {
+    return;
+  }
+  exportInitialized = true;
+  exportSentButton.addEventListener('click', async () => {
+    if (!cachedLeads.length) {
+      try {
+        await refreshLeads();
+      } catch {
+        // refreshLeads already handles UI errors
+      }
+    }
+
+    const sentRows = (cachedLeads.length ? cachedLeads : SAMPLE_LEADS).filter((lead) =>
+      SENT_TAB_STATUSES.includes(getStatusKey(lead))
+    );
+
+    if (!sentRows.length) {
+      if (sendStatusEl) {
+        sendStatusEl.textContent = 'No sent/queued leads to export';
+      }
+      return;
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadCsv(`sent-leads-${stamp}.csv`, buildSentCsv(sentRows));
+    if (sendStatusEl) {
+      sendStatusEl.textContent = `Exported ${sentRows.length} row${sentRows.length === 1 ? '' : 's'}`;
+    }
+  });
+};
+
 const init = async () => {
   if (!container) {
     return;
@@ -704,6 +785,7 @@ const bootstrap = () => {
   attachSearchListener();
   attachTabListeners();
   attachSendButton();
+  attachExportButton();
   attachReloadButton();
   init();
 };
