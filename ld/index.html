@@ -119,6 +119,10 @@
           Active endpoint: <span id="generateEndpointDisplay"></span>
         </p>
         <form id="generateForm" class="generate-overlay__form">
+          <div class="generate-overlay__city">
+            <label for="generateCity">City</label>
+            <input id="generateCity" type="text" name="city" placeholder="City (e.g. Wausau)" value="Wausau" required />
+          </div>
           <div id="generateInputs" class="generate-overlay__inputs"></div>
           <button type="button" id="addGenerateRow" class="generate-overlay__add">
             + Add another niche
@@ -195,6 +199,7 @@
         const inputs = document.getElementById("generateInputs");
         const addRowButton = document.getElementById("addGenerateRow");
         const result = document.getElementById("generateResult");
+        const cityInput = document.getElementById("generateCity");
         const endpointDisplay = document.getElementById("generateEndpointDisplay");
         const dashboard = document.querySelector(".lead-dashboard");
         const progressOverlay = document.getElementById("generateProgressOverlay");
@@ -256,6 +261,7 @@
         addRowButton?.addEventListener("click", () => inputs.appendChild(createRow()));
 
         const buildPayload = () => {
+          const city = cityInput ? cityInput.value.trim() : "";
           const rows = Array.from(inputs.querySelectorAll(".generate-row"));
           return rows
             .map((row) => {
@@ -263,9 +269,9 @@
               const countInput = row.querySelector("input[name='count']");
               const niche = nicheInput ? nicheInput.value.trim() : "";
               const count = Number((countInput ? countInput.value : "") || 0);
-              return { niche, count };
+              return { niche, count, city };
             })
-            .filter((entry) => entry.niche && entry.count > 0);
+            .filter((entry) => entry.city && entry.niche && entry.count > 0);
         };
 
         const getTotalRequested = (payload) =>
@@ -387,7 +393,7 @@
           event.preventDefault();
           const payload = buildPayload();
           if (!payload.length) {
-            setStatus("Give me at least one niche with a quantity.", true);
+            setStatus("Enter a city and at least one niche with a quantity.", true);
             return;
           }
           const totalRequested = getTotalRequested(payload);

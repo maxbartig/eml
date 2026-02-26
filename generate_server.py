@@ -25,7 +25,8 @@ from openai import OpenAI
 
 BASE_DIR = Path(__file__).resolve().parent
 LEADS_PATH = BASE_DIR / 'ld' / 'data' / 'leads.json'
-CITY_CONTEXT = 'Wausau, Wisconsin, United States'
+DEFAULT_CITY = 'Wausau'
+STATE_CONTEXT = 'Wisconsin, United States'
 EMAIL_RX = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 MONGODB_URI = os.environ.get('MONGODB_URI')
 MONGODB_DB = os.environ.get('MONGODB_DB', 'evergreen')
@@ -189,13 +190,18 @@ def _ensure_send_thread() -> bool:
         return True
 
 
-def serpapi_search(niche: str, start: int) -> Dict:
+def _city_context(city: str) -> str:
+    clean_city = (city or '').strip() or DEFAULT_CITY
+    return f'{clean_city}, {STATE_CONTEXT}'
+
+
+def serpapi_search(niche: str, city: str, start: int) -> Dict:
     if not SERPAPI_CLIENT:
         raise RuntimeError('SERPAPI_API_KEY is required to query SerpApi')
     params = {
         'engine': 'google_maps',
         'type': 'search',
-        'q': f"{niche} in {CITY_CONTEXT}",
+        'q': f"{niche} in {_city_context(city)}",
         'google_domain': 'google.com',
         'hl': 'en',
         'start': start,
@@ -215,7 +221,7 @@ def _has_website(place: Dict) -> bool:
     return False
 
 
-def extract_businesses(payload: Dict) -> Iterable[Dict]:
+def extract_businesses(payload: Dict, searched_city: str) -> Iterable[Dict]:
     raw = payload.get('local_results') or []
     if isinstance(raw, dict):
         raw = raw.get('results') or []
@@ -231,7 +237,7 @@ def extract_businesses(payload: Dict) -> Iterable[Dict]:
             'place_id': place_id,
             'maps_url': place.get('link') or place.get('maps'),
             'rating': place.get('rating') or place.get('reviews', {}).get('rating'),
-            'city': CITY_CONTEXT,
+            'city': searched_city,
             'email': place.get('email') or place.get('emails') or place.get('website') or place.get('webpage'),
             'website': place.get('website') or place.get('website_url') or place.get('webpage'),
             'has_website': _has_website(place),
@@ -345,14 +351,14 @@ def _search_for_email(name: str, city: str) -> Optional[str]:
     return None
 
 
-def build_payload(instructions: Sequence[Dict[str, int]], existing_names: set) -> List[Dict]:
+def build_payload(instructions: Sequence[Dict[str, int]], existing_names: set, city: str) -> List[Dict]:
     generated = []
     for niche, count in instructions:
         collected = 0
         start = 0
         while collected < count:
-            payload = serpapi_search(niche, start)
-            places = list(extract_businesses(payload))
+            payload = serpapi_search(niche, city, start)
+            places = list(extract_businesses(payload, city))
             if not places:
                 break
             for place in places:
@@ -400,13 +406,18 @@ def generate_leads() -> Tuple[str, int]:
         return jsonify({'error': 'SERPAPI_API_KEY and OPENAI_API_KEY are required'}), 400
     data = request.get_json() or []
     instructions = []
+    requested_city = ''
     for entry in data:
         niche = (entry.get('niche') or entry.get('category') or '').strip()
+        city = (entry.get('city') or '').strip()
         count = int(entry.get('count', 0))
         if niche and count > 0:
             instructions.append((niche, count))
+        if city and not requested_city:
+            requested_city = city
     if not instructions:
         return jsonify({'error': 'No valid niches provided'}), 400
+    requested_city = requested_city or DEFAULT_CITY
 
     leads = load_leads()
     names = {lead.get('name', '').lower() for lead in leads}
@@ -421,7 +432,7 @@ def generate_leads() -> Tuple[str, int]:
     run_started = time.time()
     run_id = f"gen_{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
     try:
-        generated = build_payload(instructions, names)
+        generated = build_payload(instructions, names, requested_city)
     except Exception as exc:
         _set_generation_progress(active=False, message='Generation failed', error=str(exc))
         raise
@@ -456,6 +467,7 @@ def generate_leads() -> Tuple[str, int]:
                 'count': len(generated),
                 'requested': total_requested,
                 'generated': len(generated),
+                'city': requested_city,
             }
         ),
         200,
