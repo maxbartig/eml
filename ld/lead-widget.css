@@ -851,9 +851,20 @@ details.mock-lead-bar summary::-webkit-details-marker,
 }
 
 .mock-lead-bar__open {
-  font-size: 1rem;
-  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.1;
   opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mock-lead-bar__open-icon {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 .mock-lead-bar__open--opened {

@@ -445,10 +445,15 @@ const SENT_TAB_STATUSES = ['sent', 'queued'];
 const renderSentStatusControls = (lead) => {
   const placeId = lead.place_id || '';
   const isDisabled = !placeId;
+  const openLabel = getOpenStateLabel(lead);
+  const openIcon = getOpenStateIcon(lead);
   const normalizedStatus = (lead.status || 'queued').toLowerCase();
   return `
     <div class="mock-lead-bar__sent-wrapper">
-      <span class="mock-lead-bar__open ${getOpenStateClass(lead)}" title="${escapeHtml(getOpenStateLabel(lead))}" aria-label="${escapeHtml(getOpenStateLabel(lead))}">👁</span>
+      <span class="mock-lead-bar__open ${getOpenStateClass(lead)}" title="${escapeHtml(openLabel)}" aria-label="${escapeHtml(openLabel)}">
+        <span class="mock-lead-bar__open-icon" aria-hidden="true">${openIcon}</span>
+        <span class="mock-lead-bar__open-label">${escapeHtml(openLabel)}</span>
+      </span>
       <select class="mock-lead-bar__select mock-lead-bar__select--sent" data-status-sent="${escapeHtml(placeId)}" ${isDisabled ? 'disabled' : ''}>
         <option value="queued"${normalizedStatus === 'queued' ? ' selected' : ''}>Queued</option>
         <option value="sent"${normalizedStatus === 'sent' ? ' selected' : ''}>Sent</option>
@@ -478,12 +483,23 @@ const getOpenStateClass = (lead) => {
 const getOpenStateLabel = (lead) => {
   const state = getOpenState(lead);
   if (state === 'opened') {
-    return 'Email opened';
+    return 'Opened';
   }
   if (state === 'unopened') {
-    return 'Not opened yet';
+    return 'Not opened';
   }
-  return 'Open status pending';
+  return 'No data';
+};
+
+const getOpenStateIcon = (lead) => {
+  const state = getOpenState(lead);
+  if (state === 'opened') {
+    return '👁';
+  }
+  if (state === 'unopened') {
+    return '◌';
+  }
+  return '?';
 };
 
 const queueAllLeads = () => {
