@@ -170,6 +170,17 @@ def _parse_iso_timestamp(value: str) -> Optional[datetime.datetime]:
     return parsed.astimezone(datetime.timezone.utc)
 
 
+def _normalize_message_id(value: object) -> str:
+    if value is None:
+        return ''
+    text = str(value).strip()
+    if not text:
+        return ''
+    if text.startswith('<') and text.endswith('>'):
+        text = text[1:-1].strip()
+    return text
+
+
 def _is_open_status_fresh(lead: Dict) -> bool:
     if lead.get('email_opened'):
         return True
@@ -266,6 +277,107 @@ def _refresh_open_statuses(place_ids: Optional[set] = None) -> Dict[str, Dict[st
     if changed:
         save_leads(leads)
     return updates
+
+
+def _extract_brevo_events(payload: object) -> List[Dict]:
+    if isinstance(payload, list):
+        return [event for event in payload if isinstance(event, dict)]
+    if isinstance(payload, dict):
+        if isinstance(payload.get('events'), list):
+            return [event for event in payload.get('events') if isinstance(event, dict)]
+        return [payload]
+    return []
+
+
+def _build_email_index(leads: List[Dict]) -> Dict[str, List[Dict]]:
+    index: Dict[str, List[Dict]] = {}
+    for lead in leads:
+        email = str(lead.get('email') or '').strip().lower()
+        if not email:
+            continue
+        index.setdefault(email, []).append(lead)
+    for email in index:
+        index[email].sort(
+            key=lambda lead: _parse_iso_timestamp(lead.get('sent_at') or '') or datetime.datetime.min.replace(
+                tzinfo=datetime.timezone.utc
+            ),
+            reverse=True,
+        )
+    return index
+
+
+def _find_lead_for_brevo_event(
+    event: Dict, msg_index: Dict[str, Dict], email_index: Dict[str, List[Dict]]
+) -> Optional[Dict]:
+    message_id = _normalize_message_id(
+        event.get('message-id') or event.get('messageId') or event.get('message_id')
+    )
+    if message_id and message_id in msg_index:
+        return msg_index[message_id]
+
+    email = str(event.get('email') or event.get('recipient') or '').strip().lower()
+    if not email:
+        return None
+    candidates = email_index.get(email) or []
+    if not candidates:
+        return None
+    event_at = _parse_iso_timestamp(event.get('date') or '')
+    if not event_at:
+        return candidates[0]
+    for lead in candidates:
+        sent_at = _parse_iso_timestamp(lead.get('sent_at') or '')
+        if sent_at and sent_at <= event_at + datetime.timedelta(minutes=10):
+            return lead
+    return candidates[0]
+
+
+def _apply_brevo_event_to_lead(lead: Dict, event: Dict, now_iso: str) -> bool:
+    event_type = str(event.get('event') or '').strip().lower()
+    if not event_type:
+        return False
+    changed = False
+    event_at = event.get('date') or now_iso
+
+    message_id = _normalize_message_id(
+        event.get('message-id') or event.get('messageId') or event.get('message_id')
+    )
+    if message_id and lead.get('brevo_message_id') != message_id:
+        lead['brevo_message_id'] = message_id
+        changed = True
+
+    if lead.get('email_open_checked_at') != now_iso:
+        lead['email_open_checked_at'] = now_iso
+        changed = True
+
+    if event_type == 'opened':
+        if not lead.get('email_opened'):
+            lead['email_opened'] = True
+            changed = True
+        if lead.get('email_opened_at') != event_at:
+            lead['email_opened_at'] = event_at
+            changed = True
+        if lead.get('email_open_state') != 'opened':
+            lead['email_open_state'] = 'opened'
+            changed = True
+    elif event_type in ('delivered', 'request', 'sent'):
+        if 'email_opened' not in lead:
+            lead['email_opened'] = False
+            changed = True
+        if lead.get('email_open_state') not in ('unopened', 'opened'):
+            lead['email_open_state'] = 'unopened'
+            changed = True
+    elif event_type in ('hard_bounce', 'soft_bounce', 'invalid', 'blocked', 'spam'):
+        if lead.get('email_open_state') != 'failed':
+            lead['email_open_state'] = 'failed'
+            changed = True
+
+    if lead.get('last_brevo_event') != event_type:
+        lead['last_brevo_event'] = event_type
+        changed = True
+    if lead.get('last_brevo_event_at') != event_at:
+        lead['last_brevo_event_at'] = event_at
+        changed = True
+    return changed
 
 
 def _process_send_queue() -> None:
@@ -658,6 +770,44 @@ def get_open_status() -> Tuple[str, int]:
     place_ids = {str(v).strip() for v in ids_raw if str(v).strip()} if isinstance(ids_raw, list) else None
     updates = _refresh_open_statuses(place_ids=place_ids)
     return jsonify({'statuses': updates}), 200
+
+
+@app.route('/brevo/webhook', methods=['GET', 'POST'])
+def brevo_webhook() -> Tuple[str, int]:
+    if request.method == 'GET':
+        return jsonify({'message': 'Brevo webhook active'}), 200
+
+    payload = request.get_json(silent=True)
+    events = _extract_brevo_events(payload)
+    if not events:
+        return jsonify({'message': 'No events in payload'}), 200
+
+    leads = load_leads()
+    msg_index = {
+        _normalize_message_id(lead.get('brevo_message_id')): lead
+        for lead in leads
+        if _normalize_message_id(lead.get('brevo_message_id'))
+    }
+    email_index = _build_email_index(leads)
+    changed = False
+    matched = 0
+    now_iso = datetime.datetime.utcnow().isoformat()
+
+    for event in events:
+        lead = _find_lead_for_brevo_event(event, msg_index, email_index)
+        if not lead:
+            continue
+        matched += 1
+        if _apply_brevo_event_to_lead(lead, event, now_iso):
+            changed = True
+            normalized_id = _normalize_message_id(lead.get('brevo_message_id'))
+            if normalized_id:
+                msg_index[normalized_id] = lead
+
+    if changed:
+        save_leads(leads)
+
+    return jsonify({'message': 'Webhook processed', 'received': len(events), 'matched': matched}), 200
 
 
 @app.route('/send', methods=['POST'])
