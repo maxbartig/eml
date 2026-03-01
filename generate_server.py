@@ -39,6 +39,9 @@ BREVO_SENDER_NAME = os.environ.get('BREVO_SENDER_NAME', 'Evergreen Media Labs')
 BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
 BREVO_EVENTS_ENDPOINT = 'https://api.brevo.com/v3/smtp/statistics/events'
 BREVO_OPEN_STATUS_TTL_SECONDS = int(os.environ.get('BREVO_OPEN_STATUS_TTL_SECONDS', '300'))
+BREVO_SYNC_DEFAULT_DAYS = int(os.environ.get('BREVO_SYNC_DEFAULT_DAYS', '30'))
+BREVO_SYNC_MAX_PAGES = int(os.environ.get('BREVO_SYNC_MAX_PAGES', '10'))
+BREVO_SYNC_PAGE_LIMIT = int(os.environ.get('BREVO_SYNC_PAGE_LIMIT', '500'))
 SEND_SLEEP_SECONDS = 90
 SERPAPI_CLIENT = Client(api_key=SERPAPI_API_KEY) if SERPAPI_API_KEY else None
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -289,6 +292,41 @@ def _extract_brevo_events(payload: object) -> List[Dict]:
     return []
 
 
+def _fetch_brevo_events(event_name: str, start_date: str, end_date: str, max_pages: int) -> List[Dict]:
+    if not BREVO_API_KEY:
+        return []
+    headers = {'accept': 'application/json', 'api-key': BREVO_API_KEY}
+    out: List[Dict] = []
+    offset = 0
+    pages = max(1, max_pages)
+    limit = min(max(1, BREVO_SYNC_PAGE_LIMIT), 1000)
+
+    for _ in range(pages):
+        params = {
+            'event': event_name,
+            'limit': limit,
+            'offset': offset,
+            'startDate': start_date,
+            'endDate': end_date,
+        }
+        try:
+            response = requests.get(BREVO_EVENTS_ENDPOINT, headers=headers, params=params, timeout=45)
+            response.raise_for_status()
+        except Exception as exc:
+            app.logger.warning('Brevo history fetch failed for %s offset %s: %s', event_name, offset, exc)
+            break
+        payload = response.json() if response.content else {}
+        events = payload.get('events') if isinstance(payload, dict) else []
+        if not isinstance(events, list) or not events:
+            break
+        normalized = [event for event in events if isinstance(event, dict)]
+        out.extend(normalized)
+        if len(events) < limit:
+            break
+        offset += limit
+    return out
+
+
 def _build_email_index(leads: List[Dict]) -> Dict[str, List[Dict]]:
     index: Dict[str, List[Dict]] = {}
     for lead in leads:
@@ -378,6 +416,47 @@ def _apply_brevo_event_to_lead(lead: Dict, event: Dict, now_iso: str) -> bool:
         lead['last_brevo_event_at'] = event_at
         changed = True
     return changed
+
+
+def _sync_brevo_history(days: int) -> Dict[str, int]:
+    leads = load_leads()
+    if not leads:
+        return {'received': 0, 'matched': 0, 'updated': 0, 'days': days}
+    msg_index = {
+        _normalize_message_id(lead.get('brevo_message_id')): lead
+        for lead in leads
+        if _normalize_message_id(lead.get('brevo_message_id'))
+    }
+    email_index = _build_email_index(leads)
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    start_utc = now_utc - datetime.timedelta(days=max(1, days))
+    start_date = start_utc.strftime('%Y-%m-%d')
+    end_date = now_utc.strftime('%Y-%m-%d')
+
+    history_events: List[Dict] = []
+    for event_name in ('opened', 'delivered', 'request'):
+        history_events.extend(_fetch_brevo_events(event_name, start_date, end_date, BREVO_SYNC_MAX_PAGES))
+
+    changed = False
+    matched = 0
+    updated = 0
+    now_iso = datetime.datetime.utcnow().isoformat()
+    for event in history_events:
+        lead = _find_lead_for_brevo_event(event, msg_index, email_index)
+        if not lead:
+            continue
+        matched += 1
+        if _apply_brevo_event_to_lead(lead, event, now_iso):
+            updated += 1
+            changed = True
+            normalized_id = _normalize_message_id(lead.get('brevo_message_id'))
+            if normalized_id:
+                msg_index[normalized_id] = lead
+
+    if changed:
+        save_leads(leads)
+
+    return {'received': len(history_events), 'matched': matched, 'updated': updated, 'days': days}
 
 
 def _process_send_queue() -> None:
@@ -770,6 +849,19 @@ def get_open_status() -> Tuple[str, int]:
     place_ids = {str(v).strip() for v in ids_raw if str(v).strip()} if isinstance(ids_raw, list) else None
     updates = _refresh_open_statuses(place_ids=place_ids)
     return jsonify({'statuses': updates}), 200
+
+
+@app.route('/brevo/sync', methods=['POST'])
+def sync_brevo_history() -> Tuple[str, int]:
+    if not BREVO_API_KEY:
+        return jsonify({'error': 'BREVO_API_KEY is required to sync Brevo history'}), 400
+    payload = request.get_json(silent=True) or {}
+    try:
+        days = int(payload.get('days', BREVO_SYNC_DEFAULT_DAYS))
+    except (TypeError, ValueError):
+        days = BREVO_SYNC_DEFAULT_DAYS
+    stats = _sync_brevo_history(days=max(1, days))
+    return jsonify({'message': 'Brevo history synced', **stats}), 200
 
 
 @app.route('/brevo/webhook', methods=['GET', 'POST'])

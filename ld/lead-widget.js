@@ -21,6 +21,7 @@ const tabButtons = document.querySelectorAll('[data-lead-tab]');
 const sendButton = document.getElementById('sendQueueButton');
 const sendStatusEl = document.getElementById('sendStatus');
 const exportSentButton = document.getElementById('exportSentButton');
+const syncBrevoButton = document.getElementById('syncBrevoButton');
 const reloadButton = document.getElementById('reloadLeadsButton');
 
 let cachedLeads = [];
@@ -31,6 +32,7 @@ let tabsInitialized = false;
 let searchInitialized = false;
 let sendInitialized = false;
 let exportInitialized = false;
+let syncBrevoInitialized = false;
 let reloadInitialized = false;
 let refreshInProgress = false;
 let sendStatusPoll = null;
@@ -861,6 +863,41 @@ const attachExportButton = () => {
   });
 };
 
+const attachSyncBrevoButton = () => {
+  if (!syncBrevoButton || syncBrevoInitialized) {
+    return;
+  }
+  syncBrevoInitialized = true;
+  syncBrevoButton.addEventListener('click', async () => {
+    syncBrevoButton.disabled = true;
+    if (sendStatusEl) {
+      sendStatusEl.textContent = 'Syncing Brevo history...';
+    }
+    try {
+      const response = await fetch(`${endpoint}/brevo/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: 30 }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || 'Unable to sync Brevo history');
+      }
+      if (sendStatusEl) {
+        sendStatusEl.textContent = `Synced opens: ${payload.updated || 0} updated (${payload.matched || 0} matched)`;
+      }
+      await refreshLeads();
+    } catch (error) {
+      console.error('Brevo history sync failed', error);
+      if (sendStatusEl) {
+        sendStatusEl.textContent = error.message || 'Brevo sync failed';
+      }
+    } finally {
+      syncBrevoButton.disabled = false;
+    }
+  });
+};
+
 const init = async () => {
   if (!container) {
     return;
@@ -885,6 +922,7 @@ const bootstrap = () => {
   attachTabListeners();
   attachSendButton();
   attachExportButton();
+  attachSyncBrevoButton();
   attachReloadButton();
   init();
 };
