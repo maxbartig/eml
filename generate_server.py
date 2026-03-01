@@ -37,6 +37,8 @@ BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
 BREVO_SENDER_EMAIL = os.environ.get('BREVO_SENDER_EMAIL', 'hello@evergreenmedialabs.com')
 BREVO_SENDER_NAME = os.environ.get('BREVO_SENDER_NAME', 'Evergreen Media Labs')
 BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
+BREVO_EVENTS_ENDPOINT = 'https://api.brevo.com/v3/smtp/statistics/events'
+BREVO_OPEN_STATUS_TTL_SECONDS = int(os.environ.get('BREVO_OPEN_STATUS_TTL_SECONDS', '300'))
 SEND_SLEEP_SECONDS = 90
 SERPAPI_CLIENT = Client(api_key=SERPAPI_API_KEY) if SERPAPI_API_KEY else None
 OPENAI_CLIENT = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -134,7 +136,7 @@ def _build_html_body(body: str) -> str:
     return f'<p>{escaped}</p>' if escaped else ''
 
 
-def _dispatch_brevo_email(lead: Dict) -> None:
+def _dispatch_brevo_email(lead: Dict) -> Dict:
     if not BREVO_API_KEY:
         raise RuntimeError('BREVO_API_KEY is required to send email')
     payload = {
@@ -147,6 +149,123 @@ def _dispatch_brevo_email(lead: Dict) -> None:
     headers = {'Content-Type': 'application/json', 'api-key': BREVO_API_KEY}
     response = requests.post(BREVO_ENDPOINT, json=payload, headers=headers, timeout=60)
     response.raise_for_status()
+    data = response.json() if response.content else {}
+    return data if isinstance(data, dict) else {}
+
+
+def _parse_iso_timestamp(value: str) -> Optional[datetime.datetime]:
+    if not value or not isinstance(value, str):
+        return None
+    candidate = value.strip()
+    if not candidate:
+        return None
+    if candidate.endswith('Z'):
+        candidate = candidate[:-1] + '+00:00'
+    try:
+        parsed = datetime.datetime.fromisoformat(candidate)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+    return parsed.astimezone(datetime.timezone.utc)
+
+
+def _is_open_status_fresh(lead: Dict) -> bool:
+    if lead.get('email_opened'):
+        return True
+    checked_at = _parse_iso_timestamp(lead.get('email_open_checked_at'))
+    if not checked_at:
+        return False
+    age = datetime.datetime.now(datetime.timezone.utc) - checked_at
+    return age.total_seconds() < BREVO_OPEN_STATUS_TTL_SECONDS
+
+
+def _fetch_brevo_open_event(lead: Dict) -> Optional[Dict]:
+    if not BREVO_API_KEY:
+        return None
+    message_id = (lead.get('brevo_message_id') or '').strip()
+    if not message_id:
+        return None
+    headers = {'accept': 'application/json', 'api-key': BREVO_API_KEY}
+    params = {'event': 'opened', 'limit': 1, 'messageId': message_id}
+    try:
+        response = requests.get(BREVO_EVENTS_ENDPOINT, headers=headers, params=params, timeout=30)
+        response.raise_for_status()
+    except Exception as exc:
+        app.logger.warning('Brevo open-event lookup failed for %s: %s', lead.get('name'), exc)
+        return None
+    payload = response.json() if response.content else {}
+    events = payload.get('events') if isinstance(payload, dict) else []
+    if not isinstance(events, list) or not events:
+        return None
+    first = events[0]
+    return first if isinstance(first, dict) else None
+
+
+def _refresh_open_statuses(place_ids: Optional[set] = None) -> Dict[str, Dict[str, object]]:
+    updates: Dict[str, Dict[str, object]] = {}
+    leads = load_leads()
+    changed = False
+    now_iso = datetime.datetime.utcnow().isoformat()
+    for lead in leads:
+        place_id = lead.get('place_id')
+        if not place_id:
+            continue
+        if place_ids is not None and place_id not in place_ids:
+            continue
+        if (lead.get('status') or '').lower() != 'sent':
+            continue
+        if _is_open_status_fresh(lead):
+            updates[place_id] = {
+                'opened': bool(lead.get('email_opened')),
+                'opened_at': lead.get('email_opened_at'),
+                'checked_at': lead.get('email_open_checked_at'),
+                'state': 'opened' if lead.get('email_opened') else (lead.get('email_open_state') or 'unopened'),
+            }
+            continue
+
+        if not (lead.get('brevo_message_id') or '').strip():
+            lead['email_open_state'] = 'unknown'
+            lead['email_open_checked_at'] = now_iso
+            updates[place_id] = {
+                'opened': False,
+                'opened_at': lead.get('email_opened_at'),
+                'checked_at': now_iso,
+                'state': 'unknown',
+            }
+            changed = True
+            continue
+
+        event = _fetch_brevo_open_event(lead)
+        lead['email_open_checked_at'] = now_iso
+        if event:
+            event_date = event.get('date')
+            lead['email_opened'] = True
+            lead['email_opened_at'] = event_date or now_iso
+            lead['email_open_state'] = 'opened'
+            changed = True
+            updates[place_id] = {
+                'opened': True,
+                'opened_at': lead.get('email_opened_at'),
+                'checked_at': now_iso,
+                'state': 'opened',
+            }
+        else:
+            if 'email_opened' not in lead:
+                changed = True
+            lead['email_opened'] = False
+            lead['email_open_state'] = 'unopened'
+            updates[place_id] = {
+                'opened': False,
+                'opened_at': lead.get('email_opened_at'),
+                'checked_at': now_iso,
+                'state': 'unopened',
+            }
+            changed = True
+
+    if changed:
+        save_leads(leads)
+    return updates
 
 
 def _process_send_queue() -> None:
@@ -167,9 +286,15 @@ def _process_send_queue() -> None:
                     email_address = lead.get('email')
                     if not email_address:
                         continue
-                    _dispatch_brevo_email(lead)
+                    send_result = _dispatch_brevo_email(lead)
                     lead['status'] = 'Sent'
                     lead['sent_at'] = datetime.datetime.utcnow().isoformat()
+                    message_id = send_result.get('messageId') if isinstance(send_result, dict) else None
+                    if message_id:
+                        lead['brevo_message_id'] = message_id
+                    lead['email_opened'] = False
+                    lead['email_opened_at'] = None
+                    lead['email_open_checked_at'] = None
                     save_leads(leads)
                 except Exception as exc:
                     app.logger.error('Failed to send to %s: %s', lead.get('name'), exc)
@@ -524,6 +649,15 @@ def update_status(place_id: str) -> Tuple[str, int]:
         return jsonify({'error': 'Lead not found'}), 404
     save_leads(leads)
     return jsonify({'message': 'Status updated'}), 200
+
+
+@app.route('/leads/open-status', methods=['POST'])
+def get_open_status() -> Tuple[str, int]:
+    payload = request.get_json(silent=True) or {}
+    ids_raw = payload.get('place_ids') or []
+    place_ids = {str(v).strip() for v in ids_raw if str(v).strip()} if isinstance(ids_raw, list) else None
+    updates = _refresh_open_statuses(place_ids=place_ids)
+    return jsonify({'statuses': updates}), 200
 
 
 @app.route('/send', methods=['POST'])

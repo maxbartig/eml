@@ -34,6 +34,7 @@ let exportInitialized = false;
 let reloadInitialized = false;
 let refreshInProgress = false;
 let sendStatusPoll = null;
+let openStatusRefreshInFlight = false;
 let generatorProgressCache = null;
 const CHICAGO_TIMEZONE = 'America/Chicago';
 
@@ -447,12 +448,42 @@ const renderSentStatusControls = (lead) => {
   const normalizedStatus = (lead.status || 'queued').toLowerCase();
   return `
     <div class="mock-lead-bar__sent-wrapper">
+      <span class="mock-lead-bar__open ${getOpenStateClass(lead)}" title="${escapeHtml(getOpenStateLabel(lead))}" aria-label="${escapeHtml(getOpenStateLabel(lead))}">👁</span>
       <select class="mock-lead-bar__select mock-lead-bar__select--sent" data-status-sent="${escapeHtml(placeId)}" ${isDisabled ? 'disabled' : ''}>
         <option value="queued"${normalizedStatus === 'queued' ? ' selected' : ''}>Queued</option>
         <option value="sent"${normalizedStatus === 'sent' ? ' selected' : ''}>Sent</option>
       </select>
     </div>
   `;
+};
+
+const getOpenState = (lead) => {
+  if (lead.email_open_state === 'unknown') {
+    return 'unknown';
+  }
+  if (lead.email_opened) {
+    return 'opened';
+  }
+  if (lead.email_open_checked_at) {
+    return 'unopened';
+  }
+  return 'unknown';
+};
+
+const getOpenStateClass = (lead) => {
+  const state = getOpenState(lead);
+  return `mock-lead-bar__open--${state}`;
+};
+
+const getOpenStateLabel = (lead) => {
+  const state = getOpenState(lead);
+  if (state === 'opened') {
+    return 'Email opened';
+  }
+  if (state === 'unopened') {
+    return 'Not opened yet';
+  }
+  return 'Open status pending';
 };
 
 const queueAllLeads = () => {
@@ -543,6 +574,9 @@ const refreshLeads = async () => {
     }
     const data = await response.json();
     cachedLeads = Array.isArray(data) ? data : [];
+    if (activeTab === 'sent') {
+      await refreshOpenStatuses();
+    }
     renderLeads();
     return cachedLeads;
   } finally {
@@ -631,6 +665,55 @@ const renderLeads = () => {
     });
   }
   updateTabState();
+};
+
+const mergeOpenStatuses = (statuses) => {
+  if (!statuses || typeof statuses !== 'object') {
+    return;
+  }
+  cachedLeads = cachedLeads.map((lead) => {
+    const placeId = lead.place_id || '';
+    const status = statuses[placeId];
+    if (!status) {
+      return lead;
+    }
+    return {
+      ...lead,
+      email_opened: Boolean(status.opened),
+      email_opened_at: status.opened_at || lead.email_opened_at || null,
+      email_open_checked_at: status.checked_at || lead.email_open_checked_at || null,
+      email_open_state: status.state || lead.email_open_state || null,
+    };
+  });
+};
+
+const refreshOpenStatuses = async () => {
+  if (openStatusRefreshInFlight) {
+    return;
+  }
+  const placeIds = cachedLeads
+    .filter((lead) => SENT_TAB_STATUSES.includes((lead.status || '').toLowerCase()) && lead.place_id)
+    .map((lead) => lead.place_id);
+  if (!placeIds.length) {
+    return;
+  }
+  openStatusRefreshInFlight = true;
+  try {
+    const response = await fetch(`${endpoint}/leads/open-status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ place_ids: placeIds }),
+    });
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json();
+    mergeOpenStatuses(payload.statuses);
+  } catch (error) {
+    console.error('Open status refresh failed', error);
+  } finally {
+    openStatusRefreshInFlight = false;
+  }
 };
 
 const deleteLead = async (id) => {

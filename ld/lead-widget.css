@@ -841,12 +841,31 @@ details.mock-lead-bar summary::-webkit-details-marker,
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  align-items: flex-end;
 }
 
 .mock-lead-bar__select--sent {
   max-width: 120px;
   min-width: 110px;
   justify-self: flex-end;
+}
+
+.mock-lead-bar__open {
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.mock-lead-bar__open--opened {
+  color: #22c55e;
+}
+
+.mock-lead-bar__open--unopened {
+  color: #94a3b8;
+}
+
+.mock-lead-bar__open--unknown {
+  color: #f59e0b;
 }
 
 .mock-lead-bar__delete:hover {
